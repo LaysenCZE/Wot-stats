@@ -13,86 +13,446 @@ import { motion } from "framer-motion";
 import { Info, Moon, SunMedium, Search, Swords, Target, Gauge, Trophy, ShieldCheck, TrendingUp, Skull, AlertCircle } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend, LineChart, Line } from "recharts";
 
-
 /**
-* WoT Stats – Jednostránková aplikace
-*
-* Funkce:
-* - Hledání hráčů (nickname -> account_id) přes Wargaming Public API
-* - Přehled hráče: bitvy, výhry, prohry, winrate, celkové DMG, průměr DMG, zničená vozidla
-* - Grafy: výhry vs prohry (bar), přehled metrik (line), koláč výher/proher
-* - Garáž tanků: obrázek, tier, bitvy, výhry/prohry, celkové DMG, průměr DMG, zničené vozidla
-* - Tmavý režim (toggle), pestrá animovaná tlačítka, Info/Novinky (Dialog)
-*
-* POZN.: Vyžaduje WG API APP ID (viz const WG_APP_ID). Pro provoz na frontendu může být potřeba CORS proxy.
-*/
-
+ * WoT Stats – Jednostránková aplikace
+ *
+ * Funkce:
+ * - Hledání hráčů (nickname -> account_id) přes Wargaming Public API
+ * - Přehled hráče: bitvy, výhry, prohry, winrate, celkové DMG, průměr DMG, zničená vozidla
+ * - Grafy: výhry vs prohry (bar), přehled metrik (line), koláč výher/proher
+ * - Garáž tanků: obrázek, tier, bitvy, výhry/prohry, celkové DMG, průměr DMG, zničené vozidla
+ * - Tmavý režim (toggle), pestrá animovaná tlačítka, Info/Novinky (Dialog)
+ *
+ * POZN.: Vyžaduje WG API APP ID (viz const WG_APP_ID). Pro provoz na frontendu může být potřeba CORS proxy.
+ */
 
 // TODO: nastavte své WG APP ID
-const WG_APP_ID = process.env.NEXT_PUBLIC_WG_APP_ID || "YOUR_WG_APP_ID"; // vložte klíč nebo nastavte ENV
-
+const WG_APP_ID = "028df7d564e4447b29c6c3ee894142cb"; // pevně nastavený klíč – UI pro zadávání není potřeba // vložte klíč nebo nastavte ENV
 
 // Regiony API
 const REGIONS = {
-eu: "https://api.worldoftanks.eu",
-na: "https://api.worldoftanks.com",
-asia: "https://api.worldoftanks.asia",
-ru: "https://api.worldoftanks.ru",
+  eu: "https://api.worldoftanks.eu",
+  na: "https://api.worldoftanks.com",
+  asia: "https://api.worldoftanks.asia",
+  ru: "https://api.worldoftanks.ru",
 } as const;
-
 
 // Malá paleta pro koláč
 const PIE_KEYS = ["#3b82f6", "#ef4444"];
 
-
 // Sjednocení fetch s chybami
 async function getJSON(url: string) {
-const res = await fetch(url);
-if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-const data = await res.json();
-if (data?.status !== "ok") {
-const msg = data?.error?.message || "Neznámá chyba API";
-throw new Error(msg);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  if (data?.status !== "ok") {
+    const msg = data?.error?.message || "Neznámá chyba API";
+    throw new Error(msg);
+  }
+  return data;
 }
-return data;
-}
-
 
 function formatPct(n: number) {
-return (n * 100).toFixed(2) + "%";
+  return (n * 100).toFixed(2) + "%";
 }
-
 
 function niceInt(n: number | undefined | null) {
-if (!n && n !== 0) return "-";
-return n.toLocaleString("cs-CZ");
+  if (!n && n !== 0) return "-";
+  return n.toLocaleString("cs-CZ");
 }
 
-
 export default function WoTStatsApp() {
-const [dark, setDark] = useState<boolean>(true);
-const [region, setRegion] = useState<keyof typeof REGIONS>("eu");
-const [query, setQuery] = useState("");
-const [loading, setLoading] = useState(false);
-const [error, setError] = useState<string | null>(null);
-const [player, setPlayer] = useState<any | null>(null); // account/info
-const [tanks, setTanks] = useState<any[]>([]); // tanks/stats
-const [ency, setEncy] = useState<Record<string, any>>({}); // vehicles encyclopedia by tank_id
+  const [dark, setDark] = useState<boolean>(true);
+  const [region, setRegion] = useState<keyof typeof REGIONS>("eu");
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [player, setPlayer] = useState<any | null>(null); // account/info
+  const [tanks, setTanks] = useState<any[]>([]); // tanks/stats
+  const [ency, setEncy] = useState<Record<string, any>>({}); // vehicles encyclopedia by tank_id
 
+  // Dark mode
+  useEffect(() => {
+    const root = document.documentElement;
+    if (dark) root.classList.add("dark"); else root.classList.remove("dark");
+  }, [dark]);
 
-// Dark mode
-useEffect(() => {
-const root = document.documentElement;
-if (dark) root.classList.add("dark"); else root.classList.remove("dark");
-}, [dark]);
+  // Changelog – upravujte podle potřeby
+  const changelog = [
+    { date: "2025-09-13", items: ["První verze: hledání hráčů, přehled, grafy, garáž.", "Tmavý režim + animovaná barevná tlačítka.", "Info/Novinky v modalu."] },
+  ];
 
+  async function searchPlayer() {
+    setError(null);
+    setPlayer(null);
+    setTanks([]);
+    setEncy({});
+    if (!query.trim()) return;
+    try {
+      setLoading(true);
+      // 1) Najdi account_id podle nicku
+      const listURL = `${REGIONS[region]}/wot/account/list/?application_id=${WG_APP_ID}&search=${encodeURIComponent(query)}&limit=1`;
+      const list = await getJSON(listURL);
+      const found = list?.data?.[0];
+      if (!found) throw new Error("Hráč nenalezen.");
 
-// Changelog – upravujte podle potřeby
-const changelog = [
-{ date: "2025-09-13", items: ["První verze: hledání hráčů, přehled, grafy, garáž.", "Tmavý režim + animovaná barevná tlačítka.", "Info/Novinky v modalu."] },
-];
+      const account_id = found.account_id;
 
+      // 2) account/info – základní statistiky (all)
+      const infoURL = `${REGIONS[region]}/wot/account/info/?application_id=${WG_APP_ID}&account_id=${account_id}`;
+      const info = await getJSON(infoURL);
+      const pdata = info.data?.[account_id];
+      if (!pdata) throw new Error("Chybí data hráče.");
 
-async function searchPlayer() {
-setError(null);
-setPlayer(null);
+      // 3) tanks/stats – statistiky po tancích
+      const tanksURL = `${REGIONS[region]}/wot/tanks/stats/?application_id=${WG_APP_ID}&account_id=${account_id}`;
+      const tstats = await getJSON(tanksURL);
+      const tdata = tstats.data?.[account_id] || [];
+
+      // 4) encyclopedia/vehicles – mapování tank_id -> obrázek, tier, jméno
+      const vehicleIds = Array.from(new Set(tdata.map((t: any) => t.tank_id)));
+      let encyMap: Record<string, any> = {};
+      // WG API omezuje délku dotazu; rozdělíme případně na bloky
+      const chunkSize = 90;
+      for (let i = 0; i < vehicleIds.length; i += chunkSize) {
+        const chunk = vehicleIds.slice(i, i + chunkSize);
+        const vURL = `${REGIONS[region]}/wot/encyclopedia/vehicles/?application_id=${WG_APP_ID}&tank_id=${chunk.join(",")}`;
+        const vres = await getJSON(vURL);
+        Object.assign(encyMap, vres.data);
+      }
+
+      setPlayer({ account_id, nickname: found.nickname, raw: pdata });
+      setTanks(tdata);
+      setEncy(encyMap);
+    } catch (e: any) {
+      setError(e.message || String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const overall = useMemo(() => {
+    if (!player) return null;
+    const s = player.raw?.statistics?.all || {};
+    const battles = s.battles || 0;
+    const wins = s.wins || 0;
+    const losses = battles - wins - (s.draws || 0);
+    const damage = s.damage_dealt || 0;
+    const avgDmg = battles ? Math.round(damage / battles) : 0;
+    const winrate = battles ? wins / battles : 0;
+    const frags = s.frags || 0;
+    return { battles, wins, losses, winrate, damage, avgDmg, frags };
+  }, [player]);
+
+  // Data do grafů
+  const barWinLoss = useMemo(() => overall ? [
+    { label: "Výhry", value: overall.wins },
+    { label: "Prohry", value: overall.losses },
+  ] : [], [overall]);
+
+  const pieWinLoss = useMemo(() => overall ? [
+    { name: "Výhry", value: overall.wins },
+    { name: "Prohry", value: overall.losses },
+  ] : [], [overall]);
+
+  const lineMetrics = useMemo(() => overall ? [
+    { name: "Bitvy", battles: overall.battles },
+    { name: "DMG celkem", damage: overall.damage },
+    { name: "Zničené", frags: overall.frags },
+  ] : [], [overall]);
+
+  // Vypočtená garáž s obohacením o encyklopedii
+  const garage = useMemo(() => {
+    return tanks.map((t) => {
+      const v = ency?.[t.tank_id];
+      const battles = t.all?.battles || 0;
+      const wins = t.all?.wins || 0;
+      const losses = battles - wins - (t.all?.draws || 0);
+      const dmg = t.all?.damage_dealt || 0;
+      const avg = battles ? Math.round(dmg / battles) : 0;
+      const frags = t.all?.frags || 0;
+      return {
+        tank_id: t.tank_id,
+        name: v?.name || `Tank ${t.tank_id}`,
+        tier: v?.tier || "?",
+        image: v?.images?.big_icon || v?.images?.small_icon || null,
+        nation: v?.nation || "",
+        class: v?.type || "",
+        battles,
+        wins,
+        losses,
+        dmg,
+        avg,
+        frags,
+      };
+    }).sort((a, b) => b.battles - a.battles);
+  }, [tanks, ency]);
+
+  return (
+    <TooltipProvider>
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-950 to-black text-slate-100 dark:text-slate-100">
+        {/* Top bar */}
+        <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-slate-900/70 bg-slate-900/80 border-b border-white/5">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Swords className="h-6 w-6" />
+              <h1 className="text-xl font-semibold tracking-tight">WoT Stats</h1>
+              <span className="text-xs text-slate-400">beta</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Select value={region} onValueChange={(v: any) => setRegion(v)}>
+                <SelectTrigger className="w-[110px] bg-slate-800/60 border-white/10">
+                  <SelectValue placeholder="Region" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="eu">EU</SelectItem>
+                  <SelectItem value="na">NA</SelectItem>
+                  <SelectItem value="asia">ASIA</SelectItem>
+                  <SelectItem value="ru">RU</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setDark((d) => !d)}
+                className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium border border-white/10 bg-gradient-to-br from-indigo-600 to-fuchsia-600 hover:from-indigo-500 hover:to-fuchsia-500 transition-colors"
+                aria-label="Přepnout tmavý režim"
+              >
+                {dark ? <SunMedium className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                {dark ? "Světlý" : "Tmavý"}
+              </motion.button>
+
+              <Dialog>
+                <DialogTrigger asChild>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold border border-white/10 bg-gradient-to-br from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500"
+                  >
+                    <Info className="h-4 w-4" /> Info & Novinky
+                  </motion.button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>O stránce</DialogTitle>
+                    <DialogDescription>
+                      Přehled statistik World of Tanks. Vyhledávejte hráče, zobrazte grafy a garáž tanků.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-semibold mb-2">Co je nového</h3>
+                      <ul className="space-y-2 list-disc ml-6">
+                        {changelog.map((c) => (
+                          <li key={c.date}>
+                            <span className="text-xs text-slate-400 mr-2">{c.date}</span>
+                            <span className="font-medium">{c.items.join(" • ")}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+        </header>
+
+        {/* Search */}
+        <section className="max-w-6xl mx-auto px-4 py-6">
+          <Card className="bg-slate-900/60 border-white/10">
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
+                <div className="flex items-center gap-3">
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Hledat hráče podle přezdívky…"
+                    className="bg-slate-800/70 border-white/10"
+                  />
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={searchPlayer}
+                  disabled={loading || !query.trim()}
+                  className="inline-flex justify-center items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold border border-white/10 bg-gradient-to-br from-blue-600 to-cyan-600 enabled:hover:from-blue-500 enabled:hover:to-cyan-500 disabled:opacity-60"
+                >
+                  <Search className="h-4 w-4" />
+                  {loading ? "Načítám…" : "Hledat"}
+                </motion.button>
+              </div>
+              {error && (
+                <div className="mt-3 flex items-center gap-2 text-red-400 text-sm">
+                  <AlertCircle className="h-4 w-4" /> {error}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Results */}
+        <main className="max-w-6xl mx-auto px-4 pb-16">
+          {!player && !loading && (
+            <div className="text-center text-slate-400">Zadejte nickname a stiskněte Hledat.</div>
+          )}
+
+          {loading && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-40 w-full bg-slate-800/60" />
+              ))}
+            </div>
+          )}
+
+          {player && overall && (
+            <>
+              {/* Player Header */}
+              <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold tracking-tight">{player.nickname}</h2>
+                  <p className="text-slate-400 text-sm">Region: {region.toUpperCase()} • ID: {player.account_id}</p>
+                </div>
+              </div>
+
+              {/* KPIs */}
+              <div className="grid md:grid-cols-3 gap-4 mb-6">
+                <KPI icon={<Trophy className="h-5 w-5" />} label="Výhry" value={niceInt(overall.wins)} />
+                <KPI icon={<ShieldCheck className="h-5 w-5" />} label="Prohry" value={niceInt(overall.losses)} />
+                <KPI icon={<Gauge className="h-5 w-5" />} label="Bitvy" value={niceInt(overall.battles)} />
+                <KPI icon={<TrendingUp className="h-5 w-5" />} label="Winrate" value={formatPct(overall.winrate)} />
+                <KPI icon={<Target className="h-5 w-5" />} label="DMG celkem" value={niceInt(overall.damage)} />
+                <KPI icon={<Skull className="h-5 w-5" />} label="Zničená vozidla" value={niceInt(overall.frags)} />
+              </div>
+
+              {/* Charts */}
+              <div className="grid md:grid-cols-3 gap-4 mb-8">
+                <Card className="bg-slate-900/60 border-white/10">
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-2">Výhry vs Prohry</h3>
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={barWinLoss}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="label" />
+                          <YAxis />
+                          <RTooltip />
+                          <Legend />
+                          <Bar dataKey="value" name="Počet" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-slate-900/60 border-white/10">
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-2">Podíl výher/proher</h3>
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={pieWinLoss} dataKey="value" nameKey="name" outerRadius={80} label>
+                            {pieWinLoss.map((_, i) => (
+                              <Cell key={i} />
+                            ))}
+                          </Pie>
+                          <RTooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-slate-900/60 border-white/10">
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-2">Metrix přehled</h3>
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={lineMetrics}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis />
+                          <RTooltip />
+                          <Legend />
+                          <Line type="monotone" dataKey="battles" name="Bitvy" />
+                          <Line type="monotone" dataKey="damage" name="DMG celkem" />
+                          <Line type="monotone" dataKey="frags" name="Zničené" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Garage */}
+              <section className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold">Garáž tanků</h3>
+                  <span className="text-sm text-slate-400">{garage.length} tanků</span>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {garage.map((g) => (
+                    <Card key={g.tank_id} className="bg-slate-900/60 border-white/10 overflow-hidden">
+                      <CardContent className="p-0">
+                        {g.image ? (
+                          <img src={g.image} alt={g.name} className="w-full h-36 object-contain bg-slate-800" />
+                        ) : (
+                          <div className="w-full h-36 bg-slate-800 flex items-center justify-center text-slate-400">Bez obrázku</div>
+                        )}
+                        <div className="p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-semibold leading-tight">{g.name}</div>
+                              <div className="text-xs text-slate-400">Tier {g.tier} • {g.nation?.toUpperCase()} • {g.class}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm">Bitvy: <span className="font-semibold">{niceInt(g.battles)}</span></div>
+                              <div className="text-xs text-slate-400">Výhry: {niceInt(g.wins)} • Prohry: {niceInt(g.losses)}</div>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <MiniStat label="DMG celkem" value={niceInt(g.dmg)} />
+                            <MiniStat label="Prům. DMG" value={niceInt(g.avg)} />
+                            <MiniStat label="Zničené" value={niceInt(g.frags)} />
+                            <MiniStat label="Winrate" value={g.battles ? formatPct(g.wins / g.battles) : "-"} />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+            </>
+          )}
+        </main>
+      </div>
+    </TooltipProvider>
+  );
+}
+
+function KPI({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <Card className="bg-slate-900/60 border-white/10">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+            {icon}
+          </div>
+          <div>
+            <div className="text-xs text-slate-400">{label}</div>
+            <div className="text-lg font-semibold">{value}</div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs text-slate-400">{label}</div>
+      <div className="font-semibold">{value}</div>
+    </div>
+  );
+}
