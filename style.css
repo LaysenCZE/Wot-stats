@@ -65,3 +65,28 @@ body {
   animation: spin 1s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* --- Tank detail pills / badge --- */
+.pill {
+  display:inline-flex; align-items:center; gap:.5rem;
+  background: rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+  padding:.4rem .75rem; border-radius: 9999px; font-weight:600;
+}
+.pill .mini {
+  display:inline-block; width:10px; height:10px; border-radius:9999px;
+}
+.pill-kpi { background: rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:.6rem .8rem; }
+.pill-kpi .label { font-size:.75rem; color:#9aa5b1; }
+.pill-kpi .value { font-weight:700; }
+
+.badge-class { padding:.15rem .55rem; border-radius:9999px; font-size:.75rem; border:1px solid rgba(255,255,255,.14); }
+.badge-ht { background:#2a0f12; color:#f87171; }
+.badge-mt { background:#0f2a1e; color:#34d399; }
+.badge-lt { background:#0f2431; color:#60a5fa; }
+.badge-td { background:#261a0e; color:#f59e0b; }
+.badge-spg{ background:#1f1430; color:#c084fc; }
+
+/* Modal panel tweaks for tank detail */
+.tank-modal { max-width: 1024px; }
+.tank-modal .left-img { background:#0b1220; border-radius:16px; }
+
