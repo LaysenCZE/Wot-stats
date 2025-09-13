@@ -9,10 +9,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config={darkMode:'class'};</script>
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com" defer></script>
+  <script>try{tailwind.config={darkMode:'class'};}catch(e){}</script>
+
+  <!-- Ikony + grafy -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
 
   <link rel="stylesheet" href="style.css">
 </head>
@@ -265,503 +269,528 @@
     </div>
   </div>
 
+<!-- ====== APP SCRIPT ====== -->
 <script>
-  // ====== CONFIG ======
-  const WG_APP_ID = "028df7d564e4447b29c6c3ee894142cb";
-  const REGIONS = { eu:'https://api.worldoftanks.eu', na:'https://api.worldoftanks.com', asia:'https://api.worldoftanks.asia', ru:'https://api.worldoftanks.ru' };
-  const COLORS = { win:'#10b981', loss:'#ef4444', dmg:'#60a5fa', battles:'#94a3b8' };
+'use strict';
 
-  // ====== UTILS ======
-  const $ = (s)=> document.querySelector(s);
-  const $c = (t,cls)=>{ const e=document.createElement(t); if(cls) e.className=cls; return e; };
-  function fmt(n){ return (n??0).toLocaleString('cs-CZ'); }
-  function pct(n){ return ((n||0)*100).toFixed(2)+'%'; }
-  function ts(ts){ return ts? new Date(ts*1000).toLocaleString('cs-CZ'):'—'; }
-  const loader = { on(){ $('#loader').classList.add('show'); }, off(){ $('#loader').classList.remove('show'); } };
+// ====== CONFIG ======
+const WG_APP_ID = "028df7d564e4447b29c6c3ee894142cb";
+const REGIONS = {
+  eu:'https://api.worldoftanks.eu',
+  na:'https://api.worldoftanks.com',
+  asia:'https://api.worldoftanks.asia',
+  ru:'https://api.worldoftanks.ru'
+};
+const COLORS = { win:'#10b981', loss:'#ef4444', dmg:'#60a5fa', battles:'#94a3b8' };
 
-  // Modály
-  function openModal(id){ document.getElementById(id)?.classList.add('open'); document.body.style.overflow='hidden'; }
-  function closeModal(id){ document.getElementById(id)?.classList.remove('open'); document.body.style.overflow=''; }
+// ====== UTILS ======
+const $ = (s)=> document.querySelector(s);
+const $c = (t,cls)=>{ const e=document.createElement(t); if(cls) e.className=cls; return e; };
+function fmt(n){ return (n??0).toLocaleString('cs-CZ'); }
+function pct(n){ return ((n||0)*100).toFixed(2)+'%'; }
+function ts(t){ return t? new Date(t*1000).toLocaleString('cs-CZ'):'—'; }
+const loader = { on(){ $('#loader').classList.add('show'); }, off(){ $('#loader').classList.remove('show'); } };
 
-  // Chart.js dark defaults
-  (function applyChartDark(){
-    if(!window.Chart) return;
+// Modály
+function openModal(id){ const el=document.getElementById(id); if(el){ el.classList.add('open'); document.body.style.overflow='hidden'; } }
+function closeModal(id){ const el=document.getElementById(id); if(el){ el.classList.remove('open'); document.body.style.overflow=''; } }
+
+// Chart.js dark defaults po načtení knihovny
+document.addEventListener('DOMContentLoaded', ()=>{
+  if(window.Chart){
     Chart.defaults.color = '#e2e8f0';
     Chart.defaults.borderColor = 'rgba(148,163,184,.25)';
     Chart.defaults.font = { size: 13 };
-    if(Chart.defaults.plugins?.legend?.labels){
+    if(Chart.defaults.plugins && Chart.defaults.plugins.legend && Chart.defaults.plugins.legend.labels){
       Chart.defaults.plugins.legend.labels.color = '#e2e8f0';
     }
-  })();
-
-  // ====== API ======
-  async function getJSON(url){
-    const r=await fetch(url);
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const j=await r.json();
-    if(j.status!=='ok') throw new Error(j?.error?.message||'Chyba API');
-    return j.data;
   }
-  async function searchAccount(nick, region){
-    const u=`${REGIONS[region]}/wot/account/list/?application_id=${WG_APP_ID}&search=${encodeURIComponent(nick)}&limit=1`;
-    const d=await getJSON(u); return d?.[0]||null;
+});
+
+// ====== API ======
+async function getJSON(url){
+  const r=await fetch(url);
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const j=await r.json();
+  if(j.status!=='ok') throw new Error((j.error && j.error.message) ? j.error.message : 'Chyba API');
+  return j.data;
+}
+async function searchAccount(nick, region){
+  const u=`${REGIONS[region]}/wot/account/list/?application_id=${WG_APP_ID}&search=${encodeURIComponent(nick)}&limit=1`;
+  const d=await getJSON(u); return (d && d[0]) ? d[0] : null;
+}
+async function accountInfo(id, region){
+  const u=`${REGIONS[region]}/wot/account/info/?application_id=${WG_APP_ID}&account_id=${id}`;
+  const d=await getJSON(u); return d ? d[id] : null;
+}
+async function tanksStats(id, region){
+  const u=`${REGIONS[region]}/wot/tanks/stats/?application_id=${WG_APP_ID}&account_id=${id}`;
+  const d=await getJSON(u); return (d && d[id]) ? d[id] : [];
+}
+async function vehiclesByIds(ids, region){
+  const out={};
+  const chunks=(a,n)=> a.length ? [a.slice(0,n), ...chunks(a.slice(n),n)] : [];
+  for(const part of chunks(ids, 90)){
+    const u=`${REGIONS[region]}/wot/encyclopedia/vehicles/?application_id=${WG_APP_ID}&tank_id=${part.join(',')}`;
+    const data = await getJSON(u);
+    Object.assign(out, data);
   }
-  async function accountInfo(id, region){
-    const u=`${REGIONS[region]}/wot/account/info/?application_id=${WG_APP_ID}&account_id=${id}`;
-    const d=await getJSON(u); return d?.[id];
+  return out;
+}
+
+// ====== COMMON ======
+function kpiFromInfo(info){
+  const s=(info && info.statistics && info.statistics.all) ? info.statistics.all : {};
+  const battles=s.battles||0;
+  const wins=s.wins||0;
+  const draws=s.draws||0;
+  const losses=Math.max(0,battles-wins-draws);
+  const dmg=s.damage_dealt||0;
+  const avg=battles?Math.round(dmg/battles):0;
+  const wr=battles?wins/battles:0;
+  return { battles, wins, losses, dmg, avg, wr };
+}
+function classBadge(cls){
+  const c=(cls||'').toLowerCase();
+  if(c==='heavytank') return 'badge-ht';
+  if(c==='mediumtank') return 'badge-mt';
+  if(c==='lighttank') return 'badge-lt';
+  if(c==='at-spg' || c==='tank_destroyer' || c==='td') return 'badge-td';
+  if(c==='spg' || c==='self_propelled_gun') return 'badge-spg';
+  return '';
+}
+
+// ====== EVENTS ======
+document.getElementById('toggleTheme').addEventListener('click', ()=> document.documentElement.classList.toggle('dark'));
+document.getElementById('openInfo').addEventListener('click', ()=> openModal('infoModal'));
+
+document.getElementById('playerInput').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter'){ e.preventDefault(); document.getElementById('searchBtn').click(); }
+});
+['cmpA','cmpB'].forEach(id=>{
+  const el=document.getElementById(id);
+  el.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('cmpBtn').click(); }});
+});
+document.getElementById('clanQuery').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); document.getElementById('clanBtn').click(); }
+});
+document.getElementById('lbNames').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); document.getElementById('lbBtn').click(); }
+});
+
+document.getElementById('searchBtn').addEventListener('click', async ()=>{
+  const nick = $('#playerInput').value.trim();
+  const region = $('#region').value;
+  if(!nick) return;
+
+  $('#errorBox').classList.add('hidden'); loader.on();
+  try{
+    const acc = await searchAccount(nick, region);
+    if(!acc) throw new Error('Hráč nenalezen');
+
+    const [info, tstats] = await Promise.all([
+      accountInfo(acc.account_id, region),
+      tanksStats(acc.account_id, region)
+    ]);
+
+    const ids = [...new Set(tstats.map(t=>t.tank_id))];
+    const vmap = await vehiclesByIds(ids, region);
+
+    renderPlayer(acc, info, tstats, vmap, region);
+  }catch(e){
+    $('#errorBox').textContent = e.message || String(e);
+    $('#errorBox').classList.remove('hidden');
+  }finally{
+    loader.off();
   }
-  async function tanksStats(id, region){
-    const u=`${REGIONS[region]}/wot/tanks/stats/?application_id=${WG_APP_ID}&account_id=${id}`;
-    const d=await getJSON(u); return d?.[id]||[];
-  }
-  async function vehiclesByIds(ids, region){
-    const out={};
-    const chunks=(a,n)=> a.length?[a.slice(0,n),...chunks(a.slice(n),n)]:[];
-    for(const part of chunks(ids, 90)){
-      const u=`${REGIONS[region]}/wot/encyclopedia/vehicles/?application_id=${WG_APP_ID}&tank_id=${part.join(',')}`;
-      Object.assign(out, await getJSON(u));
-    }
-    return out;
-  }
+});
 
-  // ====== COMMON ======
-  function kpiFromInfo(info){
-    const s=info?.statistics?.all||{};
-    const battles=s.battles||0;
-    const wins=s.wins||0;
-    const draws=s.draws||0;
-    const losses=Math.max(0,battles-wins-draws);
-    const dmg=s.damage_dealt||0;
-    const avg=battles?Math.round(dmg/battles):0;
-    const wr=battles?wins/battles:0;
-    return { battles, wins, losses, dmg, avg, wr };
-  }
-  function classBadge(cls){
-    switch((cls||'').toLowerCase()){
-      case 'heavytank': return 'badge-ht';
-      case 'mediumtank': return 'badge-mt';
-      case 'lighttank': return 'badge-lt';
-      case 'at-spg':
-      case 'tank_destroyer':
-      case 'td': return 'badge-td';
-      case 'spg':
-      case 'self_propelled_gun': return 'badge-spg';
-      default: return '';
-    }
-  }
+// Porovnání hráčů
+document.getElementById('cmpBtn').addEventListener('click', async ()=>{
+  const a=$('#cmpA').value.trim(); const b=$('#cmpB').value.trim(); const region=$('#region').value;
+  if(!a||!b) return;
+  loader.on();
+  try{
+    const [accA, accB] = await Promise.all([searchAccount(a,region), searchAccount(b,region)]);
+    if(!accA||!accB) throw new Error('Hráč A nebo B nenalezen.');
+    const [infoA, infoB] = await Promise.all([accountInfo(accA.account_id,region), accountInfo(accB.account_id,region)]);
+    const kA = kpiFromInfo(infoA); const kB = kpiFromInfo(infoB);
 
-  // ====== EVENTS ======
-  document.getElementById('toggleTheme').addEventListener('click', ()=> document.documentElement.classList.toggle('dark'));
-  document.getElementById('openInfo').addEventListener('click', ()=> openModal('infoModal'));
-  document.getElementById('playerInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('searchBtn').click(); }});
-  ['cmpA','cmpB'].forEach(id=>document.getElementById(id).addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('cmpBtn').click(); }}));
-  document.getElementById('clanQuery').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('clanBtn').click(); }});
-  document.getElementById('lbNames').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('lbBtn').click(); }});
+    $('#cmpResult').classList.remove('hidden');
+    $('#cmpNameA').textContent = accA.nickname;
+    $('#cmpNameB').textContent = accB.nickname;
+    $('#cmpKpiA').innerHTML = `Bitvy: <b>${fmt(kA.battles)}</b><br>Výhry: <b>${fmt(kA.wins)}</b> (${pct(kA.wr)})<br>DMG: <b>${fmt(kA.dmg)}</b> • Avg: <b>${fmt(kA.avg)}</b>`;
+    $('#cmpKpiB').innerHTML = `Bitvy: <b>${fmt(kB.battles)}</b><br>Výhry: <b>${fmt(kB.wins)}</b> (${pct(kB.wr)})<br>DMG: <b>${fmt(kB.dmg)}</b> • Avg: <b>${fmt(kB.avg)}</b>`;
 
-  document.getElementById('searchBtn').addEventListener('click', async ()=>{
-    const nick = $('#playerInput').value.trim();
-    const theRegion = $('#region').value;
-    if(!nick) return;
+    if(CHARTS.cmp){ CHARTS.cmp.destroy(); }
+    CHARTS.cmp = new Chart(document.getElementById('cmpChart'),{
+      type:'bar',
+      data:{
+        labels:['Bitvy','Výhry','Prohry','DMG','Avg DMG','Winrate %'],
+        datasets:[
+          {label:accA.nickname, data:[kA.battles,kA.wins,kA.losses,kA.dmg,kA.avg,(kA.wr*100)], backgroundColor:'#22c55e'},
+          {label:accB.nickname, data:[kB.battles,kB.wins,kB.losses,kB.dmg,kB.avg,(kB.wr*100)], backgroundColor:'#3b82f6'}
+        ]
+      },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'top'}} }
+    });
+  }catch(e){ alert(e.message||e); }
+  finally{ loader.off(); }
+});
 
-    $('#errorBox').classList.add('hidden');
-    loader.on();
-    try{
-      const acc = await searchAccount(nick, theRegion);
-      if(!acc) throw new Error('Hráč nenalezen');
+// Klany
+async function clanSearch(query, region){
+  const u = `${REGIONS[region]}/wot/clans/list/?application_id=${WG_APP_ID}&search=${encodeURIComponent(query)}&limit=1`;
+  const d = await getJSON(u);
+  return (d && d[0]) ? d[0] : null;
+}
+async function clanInfo(clan_id, region){
+  const u = `${REGIONS[region]}/wot/clans/info/?application_id=${WG_APP_ID}&clan_id=${clan_id}&extra=members`;
+  const d = await getJSON(u);
+  return d ? d[clan_id] : null;
+}
+document.getElementById('clanBtn').addEventListener('click', async ()=>{
+  const q=$('#clanQuery').value.trim(); const region=$('#region').value;
+  if(!q) return;
+  loader.on();
+  try{
+    const clan = await clanSearch(q, region);
+    if(!clan) throw new Error('Klan nenalezen.');
+    const ci = await clanInfo(clan.clan_id, region);
 
-      const [info, tstats] = await Promise.all([
-        accountInfo(acc.account_id, theRegion),
-        tanksStats(acc.account_id, theRegion)
-      ]);
-      const ids = [...new Set(tstats.map(t=>t.tank_id))];
-      const vmap = await vehiclesByIds(ids, theRegion);
+    $('#clanResult').classList.remove('hidden');
+    $('#clanName').textContent = `[${ci.tag}] ${ci.name}`;
+    $('#clanMeta').textContent = `Clan ID: ${ci.clan_id} • Region: ${region.toUpperCase()}`;
+    $('#clanMembers').textContent = ci.members_count || (ci.members ? ci.members.length : '—');
 
-      renderPlayer(acc, info, tstats, vmap, theRegion);
-    }catch(e){
-      $('#errorBox').textContent = e.message||String(e);
-      $('#errorBox').classList.remove('hidden');
-    }finally{
-      loader.off();
-    }
-  });
-
-  document.getElementById('cmpBtn').addEventListener('click', async ()=>{
-    const a=$('#cmpA').value.trim(); const b=$('#cmpB').value.trim(); const region=$('#region').value;
-    if(!a||!b) return;
-    loader.on();
-    try{
-      const [accA, accB] = await Promise.all([searchAccount(a,region), searchAccount(b,region)]);
-      if(!accA||!accB) throw new Error('Hráč A nebo B nenalezen.');
-      const [infoA, infoB] = await Promise.all([accountInfo(accA.account_id,region), accountInfo(accB.account_id,region)]);
-      const kA = kpiFromInfo(infoA); const kB = kpiFromInfo(infoB);
-
-      $('#cmpResult').classList.remove('hidden');
-      $('#cmpNameA').textContent = accA.nickname;
-      $('#cmpNameB').textContent = accB.nickname;
-      $('#cmpKpiA').innerHTML = `Bitvy: <b>${fmt(kA.battles)}</b><br>Výhry: <b>${fmt(kA.wins)}</b> (${pct(kA.wr)})<br>DMG: <b>${fmt(kA.dmg)}</b> • Avg: <b>${fmt(kA.avg)}</b>`;
-      $('#cmpKpiB').innerHTML = `Bitvy: <b>${fmt(kB.battles)}</b><br>Výhry: <b>${fmt(kB.wins)}</b> (${pct(kB.wr)})<br>DMG: <b>${fmt(kB.dmg)}</b> • Avg: <b>${fmt(kB.avg)}</b>`;
-
-      if(CHARTS.cmp) CHARTS.cmp.destroy();
-      CHARTS.cmp = new Chart(document.getElementById('cmpChart'),{
-        type:'bar',
-        data:{
-          labels:['Bitvy','Výhry','Prohry','DMG','Avg DMG','Winrate %'],
-          datasets:[
-            {label:accA.nickname, data:[kA.battles,kA.wins,kA.losses,kA.dmg,kA.avg,(kA.wr*100)], backgroundColor:'#22c55e'},
-            {label:accB.nickname, data:[kB.battles,kB.wins,kB.losses,kB.dmg,kB.avg,(kB.wr*100)], backgroundColor:'#3b82f6'}
-          ]
-        },
-        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'top'}} }
-      });
-    }catch(e){ alert(e.message||e); }
-    finally{ loader.off(); }
-  });
-
-  async function clanSearch(query, region){
-    const u = `${REGIONS[region]}/wot/clans/list/?application_id=${WG_APP_ID}&search=${encodeURIComponent(query)}&limit=1`;
-    const d = await getJSON(u);
-    return d?.[0]||null;
-  }
-  async function clanInfo(clan_id, region){
-    const u = `${REGIONS[region]}/wot/clans/info/?application_id=${WG_APP_ID}&clan_id=${clan_id}&extra=members`;
-    const d = await getJSON(u);
-    return d?.[clan_id];
-  }
-  document.getElementById('clanBtn').addEventListener('click', async ()=>{
-    const q=$('#clanQuery').value.trim(); const region=$('#region').value;
-    if(!q) return;
-    loader.on();
-    try{
-      const clan = await clanSearch(q, region);
-      if(!clan) throw new Error('Klan nenalezen.');
-      const ci = await clanInfo(clan.clan_id, region);
-      $('#clanResult').classList.remove('hidden');
-      $('#clanName').textContent = `[${ci.tag}] ${ci.name}`;
-      $('#clanMeta').textContent = `Clan ID: ${ci.clan_id} • Region: ${region.toUpperCase()}`;
-      $('#clanMembers').textContent = ci.members_count || (ci.members?.length||'—');
-
-      const ids = (ci.members||[]).slice(0,25).map(m=>m.account_id);
-      if(!ids.length) throw new Error('Klan nemá členy (nebo API neposkytlo).');
+    const ids = (ci.members||[]).slice(0,25).map(m=>m.account_id);
+    if(ids.length){
       const u = `${REGIONS[region]}/wot/account/info/?application_id=${WG_APP_ID}&account_id=${ids.join(',')}`;
       const data = await getJSON(u);
       const rows = ids.map(id=>{
         const inf=data[id]; const k=kpiFromInfo(inf);
-        return { name: inf?.nickname||id, wr: (k.wr*100) };
+        return { name: (inf && inf.nickname) ? inf.nickname : String(id), wr: (k.wr*100) };
       }).sort((A,B)=>B.wr-A.wr);
 
-      if(CHARTS.clan) CHARTS.clan.destroy();
+      if(CHARTS.clan){ CHARTS.clan.destroy(); }
       CHARTS.clan = new Chart(document.getElementById('clanChart'),{
         type:'bar',
         data:{ labels: rows.map(r=>r.name), datasets:[{ label:'Winrate %', data: rows.map(r=>r.wr), backgroundColor:'#06b6d4' }] },
         options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
       });
-    }catch(e){ alert(e.message||e); }
-    finally{ loader.off(); }
-  });
+    }
+  }catch(e){ alert(e.message||e); }
+  finally{ loader.off(); }
+});
 
-  document.getElementById('lbBtn').addEventListener('click', async ()=>{
-    const names = $('#lbNames').value.split(',').map(s=>s.trim()).filter(Boolean);
-    const metric = $('#lbMetric').value; const region=$('#region').value;
-    if(!names.length) return;
+// Žebříček
+document.getElementById('lbBtn').addEventListener('click', async ()=>{
+  const names = $('#lbNames').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const metric = $('#lbMetric').value; const region=$('#region').value;
+  if(!names.length) return;
 
-    loader.on();
-    try{
-      const accs = await Promise.all(names.map(n=>searchAccount(n,region)));
-      const valid = accs.filter(Boolean);
-      if(!valid.length) throw new Error('Žádný hráč nenalezen.');
-      const ids = valid.map(a=>a.account_id);
-      const u = `${REGIONS[region]}/wot/account/info/?application_id=${WG_APP_ID}&account_id=${ids.join(',')}`;
-      const data = await getJSON(u);
+  loader.on();
+  try{
+    const accs = await Promise.all(names.map(n=>searchAccount(n,region)));
+    const valid = accs.filter(Boolean);
+    if(!valid.length) throw new Error('Žádný hráč nenalezen.');
+    const ids = valid.map(a=>a.account_id);
+    const u = `${REGIONS[region]}/wot/account/info/?application_id=${WG_APP_ID}&account_id=${ids.join(',')}`;
+    const data = await getJSON(u);
 
-      const rows = valid.map(a=>{
-        const k = kpiFromInfo(data[a.account_id]);
-        const val = metric==='wr'? (k.wr*100) : metric==='battles'? k.battles : metric==='dmg'? k.dmg : k.avg;
-        return { name:a.nickname, value: val, k };
-      }).sort((A,B)=>B.value-A.value);
+    const rows = valid.map(a=>{
+      const k = kpiFromInfo(data[a.account_id]);
+      const val = (metric==='wr') ? (k.wr*100) : (metric==='battles') ? k.battles : (metric==='dmg') ? k.dmg : k.avg;
+      return { name:a.nickname, value: val, k };
+    }).sort((A,B)=>B.value-A.value);
 
-      const tbl = $('#lbTable');
-      const headLbl = metric==='wr'?'Winrate %': metric==='battles'?'Bitvy': metric==='dmg'?'DMG celkem':'Prům. DMG';
-      tbl.innerHTML = `<thead class='text-left text-slate-400'><tr><th class='py-2 pr-4'>#</th><th class='py-2 pr-4'>Hráč</th><th class='py-2 pr-4'>${headLbl}</th><th class='py-2'>Bitvy</th></tr></thead><tbody></tbody>`;
-      const tb = tbl.querySelector('tbody');
-      rows.forEach((r,i)=>{
-        const tr=document.createElement('tr'); tr.className='border-t border-white/10';
-        tr.innerHTML = `<td class='py-2 pr-4'>${i+1}</td><td class='py-2 pr-4'>${r.name}</td><td class='py-2 pr-4'>${metric==='wr'? r.value.toFixed(2)+'%' : fmt(r.value)}</td><td class='py-2'>${fmt(r.k.battles)}</td>`;
-        tb.appendChild(tr);
-      });
-
-      if(CHARTS.lb) CHARTS.lb.destroy();
-      CHARTS.lb = new Chart(document.getElementById('lbChart'),{
-        type:'bar',
-        data:{ labels: rows.map(r=>r.name), datasets:[{ label: headLbl, data: rows.map(r=>r.value), backgroundColor:'#8b5cf6' }] },
-        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
-      });
-    }catch(e){ alert(e.message||e); }
-    finally{ loader.off(); }
-  });
-
-  // ====== RENDER PLAYER ======
-  let CHARTS={};
-  function upsert(ref, ctx, cfg){
-    if(CHARTS[ref]){ CHARTS[ref].data=cfg.data; CHARTS[ref].options=cfg.options||{}; CHARTS[ref].update(); }
-    else { CHARTS[ref]=new Chart(ctx, cfg); }
-  }
-
-  function renderPlayer(acc, info, tstats, vmap, region){
-    const s = info?.statistics?.all||{};
-    const battles=s.battles||0;
-    const wins=s.wins||0;
-    const draws=s.draws||0;
-    const losses=Math.max(0,battles-wins-draws);
-    const dmg=s.damage_dealt||0;
-    const avg=battles?Math.round(dmg/battles):0;
-    const wr=battles?wins/battles:0;
-
-    $('#playerSection').classList.remove('hidden');
-    $('#playerName').textContent = acc.nickname;
-    $('#playerRegion').textContent = region.toUpperCase();
-    $('#playerId').textContent = acc.account_id;
-    $('#lastBattle').textContent = ts(info?.last_battle_time);
-
-    $('#kpiBattles').textContent=fmt(battles);
-    $('#kpiWins').textContent=fmt(wins);
-    $('#kpiLosses').textContent=fmt(losses);
-    $('#kpiWR').textContent=pct(wr);
-    $('#kpiDmg').textContent=fmt(dmg);
-    $('#kpiAvg').textContent=fmt(avg);
-
-    upsert('barWinLoss', $('#barWinLoss'), {
-      type:'bar',
-      data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Počet', data:[wins,losses], backgroundColor:[COLORS.win,COLORS.loss] }] },
-      options:{ responsive:true, maintainAspectRatio:false }
-    });
-    upsert('pieWinLoss', $('#pieWinLoss'), {
-      type:'pie',
-      data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Podíl', data:[wins,losses], backgroundColor:[COLORS.win,COLORS.loss] }] },
-      options:{ responsive:true, maintainAspectRatio:false }
+    const tbl = $('#lbTable');
+    const headLbl = (metric==='wr') ? 'Winrate %' : (metric==='battles') ? 'Bitvy' : (metric==='dmg') ? 'DMG celkem' : 'Prům. DMG';
+    tbl.innerHTML = `<thead class='text-left text-slate-400'><tr><th class='py-2 pr-4'>#</th><th class='py-2 pr-4'>Hráč</th><th class='py-2 pr-4'>${headLbl}</th><th class='py-2'>Bitvy</th></tr></thead><tbody></tbody>`;
+    const tb = tbl.querySelector('tbody');
+    rows.forEach((r,i)=>{
+      const tr=document.createElement('tr'); tr.className='border-t border-white/10';
+      tr.innerHTML = `<td class='py-2 pr-4'>${i+1}</td><td class='py-2 pr-4'>${r.name}</td><td class='py-2 pr-4'>${metric==='wr'? r.value.toFixed(2)+'%' : fmt(r.value)}</td><td class='py-2'>${fmt(r.k.battles)}</td>`;
+      tb.appendChild(tr);
     });
 
-    // Top 10 DMG podle tanku
-    const byDmg = tstats.map(t=>{
-      const a=t.all||{}; return { id:t.tank_id, dmg:a.damage_dealt||0 };
-    }).sort((A,B)=>B.dmg-A.dmg).slice(0,10);
-    const labelsTop = byDmg.map(x=> (vmap?.[x.id]?.name)||('Tank '+x.id));
-    const dataTop = byDmg.map(x=> x.dmg);
-    upsert('barTopDmg', $('#barTopDmg'), {
+    if(CHARTS.lb){ CHARTS.lb.destroy(); }
+    CHARTS.lb = new Chart(document.getElementById('lbChart'),{
       type:'bar',
-      data:{ labels:labelsTop, datasets:[{ label:'DMG', data:dataTop, backgroundColor:'#60a5fa' }] },
+      data:{ labels: rows.map(r=>r.name), datasets:[{ label: headLbl, data: rows.map(r=>r.value), backgroundColor:'#8b5cf6' }] },
       options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
     });
+  }catch(e){ alert(e.message||e); }
+  finally{ loader.off(); }
+});
 
-    // Garáž
-    const garage = tstats.map(t=>{
-      const v=vmap?.[t.tank_id]||{};
-      const a=t.all||{};
-      const b=a.battles||0;
-      const w=a.wins||0;
-      const d=a.damage_dealt||0;
-      const avg=b?Math.round(d/b):0;
-      const fr=a.frags||0;
-      return {
-        id:t.tank_id, name:v.name||('Tank '+t.tank_id),
-        tier:v.tier||'?', img:v?.images?.big_icon||v?.images?.small_icon||'',
-        cls=v.type||'', nation=v.nation||'',
-        battles:b, wins:w, losses:Math.max(0,b-w-(a.draws||0)), dmg:d, avg, frags:fr
-      };
-    }).sort((A,B)=>B.battles-A.battles);
-    renderGarage(garage);
+// ====== RENDER PLAYER ======
+let CHARTS={};
+function upsert(ref, canvasEl, cfg){
+  if(CHARTS[ref]){ CHARTS[ref].data=cfg.data; CHARTS[ref].options=cfg.options||{}; CHARTS[ref].update(); }
+  else { CHARTS[ref]=new Chart(canvasEl, cfg); }
+}
 
-    setupSnapshotUI(acc.account_id, info, tstats, vmap);
-  }
+function renderPlayer(acc, info, tstats, vmap, region){
+  const s=(info && info.statistics && info.statistics.all) ? info.statistics.all : {};
+  const battles=s.battles||0;
+  const wins=s.wins||0;
+  const draws=s.draws||0;
+  const losses=Math.max(0,battles-wins-draws);
+  const dmg=s.damage_dealt||0;
+  const avg=battles?Math.round(dmg/battles):0;
+  const wr=battles?wins/battles:0;
 
-  function renderGarage(list){
-    const grid = $('#garageGrid'); grid.innerHTML='';
-    list.forEach(g=>{
-      const card=$c('div','card overflow-hidden p-0');
-      const img=$c('img','w-full h-40 object-contain bg-slate-800'); img.src=g.img; img.alt=g.name; card.appendChild(img);
+  $('#playerSection').classList.remove('hidden');
+  $('#playerName').textContent = acc.nickname;
+  $('#playerRegion').textContent = region.toUpperCase();
+  $('#playerId').textContent = acc.account_id;
+  $('#lastBattle').textContent = ts(info ? info.last_battle_time : 0);
 
-      const box=$c('div','p-4 space-y-3');
-      const head=$c('div','flex items-center justify-between');
-      const clsBadge = `<span class="badge-class ${classBadge(g.cls)}">${g.cls||'—'}</span>`;
-      head.innerHTML =
-        `<div>
-          <div class='font-semibold'>${g.name}</div>
-          <div class='text-xs text-slate-400'>Tier ${g.tier} • ${g.nation?.toUpperCase()} • ${clsBadge}</div>
-        </div>
-        <div class='text-right text-sm'>
-          Bitvy: <b>${fmt(g.battles)}</b>
-          <div class='text-xs text-slate-400'>Výhry: ${fmt(g.wins)} • Prohry: ${fmt(g.losses)}</div>
-        </div>`;
-      box.append(head);
+  $('#kpiBattles').textContent=fmt(battles);
+  $('#kpiWins').textContent=fmt(wins);
+  $('#kpiLosses').textContent=fmt(losses);
+  $('#kpiWR').textContent=pct(wr);
+  $('#kpiDmg').textContent=fmt(dmg);
+  $('#kpiAvg').textContent=fmt(avg);
 
-      const btn=$c('button','btn btn-emerald w-full'); btn.textContent='Detail tanku';
-      btn.addEventListener('click', ()=> openTankDetail(g));
-      box.append(btn);
-
-      card.appendChild(box);
-      grid.appendChild(card);
-    });
-  }
-
-  function openTankDetail(t){
-    $('#tankTitle').textContent = t.name;
-    const clsTxt = (t.cls||'').toString();
-    $('#tankMeta').innerHTML = `Tier ${t.tier} • ${t.nation?.toUpperCase()} • <span class="badge-class ${classBadge(clsTxt)}">${clsTxt||'—'}</span>`;
-    $('#tankImage').src = t.img||'';
-
-    $('#tkBattles').textContent = fmt(t.battles);
-    $('#tkWins').textContent    = fmt(t.wins);
-    $('#tkLosses').textContent  = fmt(t.losses);
-    $('#tkDmg').textContent     = fmt(t.dmg);
-    $('#tkAvg').textContent     = fmt(t.avg);
-    $('#tkFrags').textContent   = fmt(t.frags);
-
-    if(window.CHARTS?.tankPie){ CHARTS.tankPie.destroy(); delete CHARTS.tankPie; }
-    if(window.CHARTS?.tankBar){ CHARTS.tankBar.destroy(); delete CHARTS.tankBar; }
-
-    CHARTS.tankPie = new Chart(document.getElementById('tankPie'), {
-      type:'doughnut',
-      data:{ labels:['Výhry','Prohry'], datasets:[{ data:[t.wins||0, t.losses||0], backgroundColor:[COLORS.win, COLORS.loss], borderWidth:1 }] },
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, cutout:'60%' }
-    });
-
-    CHARTS.tankBar = new Chart(document.getElementById('tankBar'), {
-      type:'bar',
-      data:{
-        labels:['DMG celkem','Prům. DMG','Zničené'],
-        datasets:[{ label:'Hodnota', data:[t.dmg||0, t.avg||0, t.frags||0], backgroundColor:'#60a5fa' }]
-      },
-      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
-    });
-
-    openModal('tankModal');
-  }
-
-  // ====== SNAPSHOT LOGIC ======
-  function snapKey(id){ return `wot_snap_full_${id}`; }
-  function makeSnapshotPayload(info, tstats){
-    const total=info?.statistics?.all||{};
-    const byTank={};
-    for(const t of tstats){
-      const a=t.all||{};
-      byTank[t.tank_id]={
-        battles:a.battles||0, wins:a.wins||0, draws:a.draws||0,
-        dmg:a.damage_dealt||0, frags:a.frags||0
-      };
-    }
-    return {
-      ts: Date.now(),
-      total:{ battles:total.battles||0, wins:total.wins||0, draws:total.draws||0, dmg:total.damage_dealt||0, frags:total.frags||0 },
-      byTank
-    };
-  }
-  function saveSnapshot(id, info, tstats){
-    const payload = makeSnapshotPayload(info, tstats);
-    localStorage.setItem(snapKey(id), JSON.stringify(payload));
-    return payload;
-  }
-  function loadSnapshot(id){
-    const raw=localStorage.getItem(snapKey(id));
-    return raw? JSON.parse(raw): null;
-  }
-  function clearSnapshot(id){ localStorage.removeItem(snapKey(id)); }
-
-  function computeDelta(snap, info, tstats, vmap){
-    const now = makeSnapshotPayload(info, tstats);
-    const deltas = [];
-    for(const t of tstats){
-      const prev = snap.byTank[t.tank_id]||{battles:0,wins:0,draws:0,dmg:0,frags:0};
-      const a=t.all||{};
-      const db=(a.battles||0)-prev.battles;
-      const dw=(a.wins||0)-prev.wins;
-      const ddmg=(a.damage_dealt||0)-prev.dmg;
-      const dfr=(a.frags||0)-prev.frags;
-      if(db>0 || ddmg>0 || dfr>0){
-        const v=vmap?.[t.tank_id]||{};
-        deltas.push({ name:v.name||('Tank '+t.tank_id), battles:db, wins:dw, dmg:ddmg, frags:dfr });
-      }
-    }
-    const tot = {
-      battles:(now.total.battles - snap.total.battles),
-      wins:(now.total.wins - snap.total.wins),
-      dmg:(now.total.dmg - snap.total.dmg),
-      frags:(now.total.frags - snap.total.frags)
-    };
-    return { deltas, tot, since: new Date(snap.ts).toLocaleString('cs-CZ'), until: new Date(now.ts).toLocaleString('cs-CZ') };
-  }
-
-  function setupSnapshotUI(account_id, info, tstats, vmap){
-    const existing = loadSnapshot(account_id);
-    const infoBox = $('#snapInfo');
-    if(existing){
-      infoBox.textContent = `Uložený snapshot: ${new Date(existing.ts).toLocaleString('cs-CZ')}. Klikni na „Vyhodnotit“ pro zobrazení poslední aktivity.`;
-    } else {
-      infoBox.textContent = 'Zatím žádný snapshot. Klikni na „Uložit snapshot“, pak po hraní na „Vyhodnotit“. ';
-    }
-
-    document.getElementById('snapCreateBtn').onclick = ()=>{
-      const s=saveSnapshot(account_id, info, tstats);
-      infoBox.textContent = `Snapshot uložen: ${new Date(s.ts).toLocaleString('cs-CZ')}`;
-    };
-    document.getElementById('snapClearBtn').onclick = ()=>{
-      clearSnapshot(account_id);
-      infoBox.textContent = 'Snapshot smazán.';
-      $('#recentTable').innerHTML='';
-      upsert('recent', $('#recentChart'), { type:'bar', data:{ labels:[], datasets:[] }, options:{responsive:true, maintainAspectRatio:false} });
-    };
-    document.getElementById('snapComputeBtn').onclick = ()=> computeRecent(account_id, info, tstats, vmap);
-  }
-
-  function computeRecent(account_id, info, tstats, vmap){
-    const snap = loadSnapshot(account_id);
-    if(!snap){ alert('Nejprve ulož snapshot.'); return; }
-    const res = computeDelta(snap, info, tstats, vmap);
-
-    const tbl = $('#recentTable');
-    tbl.innerHTML = `
-      <thead class='text-left text-slate-400'>
-        <tr>
-          <th class='py-2 pr-4'>Tank</th>
-          <th class='py-2 pr-4'>Bitvy</th>
-          <th class='py-2 pr-4'>Výhry</th>
-          <th class='py-2 pr-4'>DMG</th>
-          <th class='py-2'>Zničené</th>
-        </tr>
-      </thead>
-      <tbody></tbody>`;
-
-    const tbody = tbl.querySelector('tbody');
-    res.deltas.sort((A,B)=>B.battles-A.battles).forEach(d=>{
-      const tr=document.createElement('tr');
-      tr.className='border-t border-white/10';
-      tr.innerHTML = `
-        <td class='py-2 pr-4'>${d.name}</td>
-        <td class='py-2 pr-4'>${fmt(d.battles)}</td>
-        <td class='py-2 pr-4'>${fmt(d.wins)}</td>
-        <td class='py-2 pr-4'>${fmt(d.dmg)}</td>
-        <td class='py-2'>${fmt(d.frags)}</td>`;
-      tbody.appendChild(tr);
-    });
-
-    const labels = res.deltas.map(d=>d.name);
-    const battles = res.deltas.map(d=>d.battles);
-    upsert('recent', $('#recentChart'), {
-      type:'bar',
-      data:{ labels, datasets:[{ label:'Bitvy', data:battles, backgroundColor: battles.map(()=> COLORS.battles) }] },
-      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
-    });
-
-    $('#snapInfo').innerHTML =
-      `Souhrn: <b>${fmt(res.tot.battles)}</b> bitev, výhry <b>${fmt(res.tot.wins)}</b>, DMG <b>${fmt(res.tot.dmg)}</b>, fragy <b>${fmt(res.tot.frags)}</b>.<br>
-       Interval: ${res.since} → ${res.until}`;
-  }
-
-  // Autofocus / deep link
-  document.addEventListener('DOMContentLoaded', ()=>{
-    const p=new URL(location.href).searchParams.get('player');
-    if(p){ $('#playerInput').value=p; document.getElementById('searchBtn').click(); }
-    else { $('#playerInput').focus(); }
-    lucide.createIcons();
+  upsert('barWinLoss', document.getElementById('barWinLoss'), {
+    type:'bar',
+    data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Počet', data:[wins,losses], backgroundColor:[COLORS.win,COLORS.loss] }] },
+    options:{ responsive:true, maintainAspectRatio:false }
   });
+  upsert('pieWinLoss', document.getElementById('pieWinLoss'), {
+    type:'pie',
+    data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Podíl', data:[wins,losses], backgroundColor:[COLORS.win,COLORS.loss] }] },
+    options:{ responsive:true, maintainAspectRatio:false }
+  });
+
+  // Top 10 DMG
+  const byDmg = tstats.map(t=>({ id:t.tank_id, dmg:(t.all && t.all.damage_dealt)||0 }))
+                      .sort((A,B)=>B.dmg-A.dmg).slice(0,10);
+  const labelsTop = byDmg.map(x=> (vmap && vmap[x.id] && vmap[x.id].name) ? vmap[x.id].name : ('Tank '+x.id));
+  const dataTop = byDmg.map(x=> x.dmg);
+  upsert('barTopDmg', document.getElementById('barTopDmg'), {
+    type:'bar',
+    data:{ labels:labelsTop, datasets:[{ label:'DMG', data:dataTop, backgroundColor:'#60a5fa' }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+  });
+
+  // Garáž
+  const garage = tstats.map(t=>{
+    const v=(vmap && vmap[t.tank_id]) ? vmap[t.tank_id] : {};
+    const a=t.all||{};
+    const b=a.battles||0;
+    const w=a.wins||0;
+    const d=a.damage_dealt||0;
+    const av=b?Math.round(d/b):0;
+    const fr=a.frags||0;
+    return {
+      id:t.tank_id, name:(v.name||('Tank '+t.tank_id)),
+      tier:(v.tier||'?'), img:(v.images && (v.images.big_icon||v.images.small_icon)) || '',
+      cls:(v.type||''), nation:(v.nation||''),
+      battles:b, wins:w, losses:Math.max(0,b-w-(a.draws||0)), dmg:d, avg:av, frags:fr
+    };
+  }).sort((A,B)=>B.battles-A.battles);
+  renderGarage(garage);
+
+  setupSnapshotUI(acc.account_id, info, tstats, vmap);
+}
+
+function renderGarage(list){
+  const grid = $('#garageGrid'); grid.innerHTML='';
+  list.forEach(g=>{
+    const card=$c('div','card overflow-hidden p-0');
+    const img=$c('img','w-full h-40 object-contain bg-slate-800'); img.src=g.img; img.alt=g.name; card.appendChild(img);
+
+    const box=$c('div','p-4 space-y-3');
+    const head=$c('div','flex items-center justify-between');
+    const clsBadge = `<span class="badge-class ${classBadge(g.cls)}">${g.cls||'—'}</span>`;
+    head.innerHTML =
+      `<div>
+        <div class='font-semibold'>${g.name}</div>
+        <div class='text-xs text-slate-400'>Tier ${g.tier} • ${g.nation ? g.nation.toUpperCase() : ''} • ${clsBadge}</div>
+      </div>
+      <div class='text-right text-sm'>
+        Bitvy: <b>${fmt(g.battles)}</b>
+        <div class='text-xs text-slate-400'>Výhry: ${fmt(g.wins)} • Prohry: ${fmt(g.losses)}</div>
+      </div>`;
+    box.append(head);
+
+    const btn=$c('button','btn btn-emerald w-full'); btn.textContent='Detail tanku';
+    btn.addEventListener('click', ()=> openTankDetail(g));
+    box.append(btn);
+
+    card.appendChild(box);
+    grid.appendChild(card);
+  });
+}
+
+function openTankDetail(t){
+  $('#tankTitle').textContent = t.name;
+  const clsTxt = (t.cls||'').toString();
+  $('#tankMeta').innerHTML = `Tier ${t.tier} • ${t.nation ? t.nation.toUpperCase() : ''} • <span class="badge-class ${classBadge(clsTxt)}">${clsTxt||'—'}</span>`;
+  $('#tankImage').src = t.img||'';
+
+  $('#tkBattles').textContent = fmt(t.battles);
+  $('#tkWins').textContent    = fmt(t.wins);
+  $('#tkLosses').textContent  = fmt(t.losses);
+  $('#tkDmg').textContent     = fmt(t.dmg);
+  $('#tkAvg').textContent     = fmt(t.avg);
+  $('#tkFrags').textContent   = fmt(t.frags);
+
+  if(CHARTS.tankPie){ CHARTS.tankPie.destroy(); }
+  if(CHARTS.tankBar){ CHARTS.tankBar.destroy(); }
+
+  CHARTS.tankPie = new Chart(document.getElementById('tankPie'), {
+    type:'doughnut',
+    data:{ labels:['Výhry','Prohry'], datasets:[{ data:[t.wins||0, t.losses||0], backgroundColor:[COLORS.win, COLORS.loss], borderWidth:1 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, cutout:'60%' }
+  });
+
+  CHARTS.tankBar = new Chart(document.getElementById('tankBar'), {
+    type:'bar',
+    data:{
+      labels:['DMG celkem','Prům. DMG','Zničené'],
+      datasets:[{ label:'Hodnota', data:[t.dmg||0, t.avg||0, t.frags||0], backgroundColor:'#60a5fa' }]
+    },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
+  });
+
+  openModal('tankModal');
+}
+
+// ====== SNAPSHOT LOGIC ======
+function snapKey(id){ return `wot_snap_full_${id}`; }
+function makeSnapshotPayload(info, tstats){
+  const total = (info && info.statistics && info.statistics.all) ? info.statistics.all : {};
+  const byTank = {};
+  for(const t of tstats){
+    const a=t.all||{};
+    byTank[t.tank_id]={
+      battles:a.battles||0, wins:a.wins||0, draws:a.draws||0,
+      dmg:a.damage_dealt||0, frags:a.frags||0
+    };
+  }
+  return {
+    ts: Date.now(),
+    total:{
+      battles:total.battles||0,
+      wins:total.wins||0,
+      draws:total.draws||0,
+      dmg:total.damage_dealt||0,
+      frags:total.frags||0
+    },
+    byTank: byTank
+  };
+}
+function saveSnapshot(id, info, tstats){
+  const payload = makeSnapshotPayload(info, tstats);
+  localStorage.setItem(snapKey(id), JSON.stringify(payload));
+  return payload;
+}
+function loadSnapshot(id){
+  const raw=localStorage.getItem(snapKey(id));
+  return raw? JSON.parse(raw): null;
+}
+function clearSnapshot(id){ localStorage.removeItem(snapKey(id)); }
+
+function computeDelta(snap, info, tstats, vmap){
+  const now = makeSnapshotPayload(info, tstats);
+  const deltas = [];
+  for(const t of tstats){
+    const prev = snap.byTank[t.tank_id]||{battles:0,wins:0,draws:0,dmg:0,frags:0};
+    const a=t.all||{};
+    const db=(a.battles||0)-prev.battles;
+    const dw=(a.wins||0)-prev.wins;
+    const ddmg=(a.damage_dealt||0)-prev.dmg;
+    const dfr=(a.frags||0)-prev.frags;
+    if(db>0 || ddmg>0 || dfr>0){
+      const v=(vmap && vmap[t.tank_id]) ? vmap[t.tank_id] : {};
+      deltas.push({ name:(v.name||('Tank '+t.tank_id)), battles:db, wins:dw, dmg:ddmg, frags:dfr });
+    }
+  }
+  const tot = {
+    battles:(now.total.battles - snap.total.battles),
+    wins:(now.total.wins - snap.total.wins),
+    dmg:(now.total.dmg - snap.total.dmg),
+    frags:(now.total.frags - snap.total.frags)
+  };
+  return { deltas, tot, since: new Date(snap.ts).toLocaleString('cs-CZ'), until: new Date(now.ts).toLocaleString('cs-CZ') };
+}
+
+function setupSnapshotUI(account_id, info, tstats, vmap){
+  const existing = loadSnapshot(account_id);
+  const infoBox = $('#snapInfo');
+  if(existing){
+    infoBox.textContent = `Uložený snapshot: ${new Date(existing.ts).toLocaleString('cs-CZ')}. Klikni na „Vyhodnotit“ pro zobrazení poslední aktivity.`;
+  } else {
+    infoBox.textContent = 'Zatím žádný snapshot. Klikni na „Uložit snapshot“, pak po hraní na „Vyhodnotit“.';
+  }
+
+  document.getElementById('snapCreateBtn').onclick = ()=>{
+    const s=saveSnapshot(account_id, info, tstats);
+    infoBox.textContent = `Snapshot uložen: ${new Date(s.ts).toLocaleString('cs-CZ')}`;
+  };
+  document.getElementById('snapClearBtn').onclick = ()=>{
+    clearSnapshot(account_id);
+    infoBox.textContent = 'Snapshot smazán.';
+    $('#recentTable').innerHTML='';
+    upsert('recent', document.getElementById('recentChart'), { type:'bar',
+      data:{ labels:[], datasets:[] },
+      options:{ responsive:true, maintainAspectRatio:false }
+    });
+  };
+  document.getElementById('snapComputeBtn').onclick = ()=> computeRecent(account_id, info, tstats, vmap);
+}
+
+function computeRecent(account_id, info, tstats, vmap){
+  const snap = loadSnapshot(account_id);
+  if(!snap){ alert('Nejprve ulož snapshot.'); return; }
+  const res = computeDelta(snap, info, tstats, vmap);
+
+  const tbl = $('#recentTable');
+  tbl.innerHTML = `
+    <thead class='text-left text-slate-400'>
+      <tr>
+        <th class='py-2 pr-4'>Tank</th>
+        <th class='py-2 pr-4'>Bitvy</th>
+        <th class='py-2 pr-4'>Výhry</th>
+        <th class='py-2 pr-4'>DMG</th>
+        <th class='py-2'>Zničené</th>
+      </tr>
+    </thead>
+    <tbody></tbody>`;
+  const tbody = tbl.querySelector('tbody');
+  res.deltas.sort((A,B)=>B.battles-A.battles).forEach(d=>{
+    const tr=document.createElement('tr'); tr.className='border-t border-white/10';
+    tr.innerHTML = `<td class='py-2 pr-4'>${d.name}</td>
+                    <td class='py-2 pr-4'>${fmt(d.battles)}</td>
+                    <td class='py-2 pr-4'>${fmt(d.wins)}</td>
+                    <td class='py-2 pr-4'>${fmt(d.dmg)}</td>
+                    <td class='py-2'>${fmt(d.frags)}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  const labels = res.deltas.map(d=>d.name);
+  const battles = res.deltas.map(d=>d.battles);
+  upsert('recent', document.getElementById('recentChart'), {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'Bitvy', data:battles, backgroundColor: battles.map(()=> COLORS.battles) }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
+  });
+
+  $('#snapInfo').innerHTML =
+    `Souhrn: <b>${fmt(res.tot.battles)}</b> bitev, výhry <b>${fmt(res.tot.wins)}</b>, DMG <b>${fmt(res.tot.dmg)}</b>, fragy <b>${fmt(res.tot.frags)}</b>.<br>
+     Interval: ${res.since} → ${res.until}`;
+}
+
+// Autofocus / deep link
+document.addEventListener('DOMContentLoaded', ()=>{
+  const p=new URL(location.href).searchParams.get('player');
+  if(p){ $('#playerInput').value=p; document.getElementById('searchBtn').click(); } else { $('#playerInput').focus(); }
+  if(window.lucide) lucide.createIcons();
+});
 </script>
 </body>
 </html>
