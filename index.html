@@ -4,38 +4,27 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WoT Stats – Standalone</title>
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Inter','ui-sans-serif','system-ui','Segoe UI','Roboto','Helvetica Neue','Arial'] },
-          colors: {
-            tank: {
-              light: '#fbbf24',
-              medium: '#3b82f6',
-              heavy: '#ef4444',
-              spg: '#8b5cf6',
-              at: '#10b981'
-            }
-          }
-        }
-      }
-    }
+    tailwind.config = { darkMode:'class', theme:{ extend:{ fontFamily:{ sans:['Inter','ui-sans-serif','system-ui','Segoe UI','Roboto','Helvetica Neue','Arial'] } } } }
   </script>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Icons + Chart.js -->
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
-    .card{@apply bg-slate-900/90 border border-white/10 rounded-2xl;}
-    .btn{@apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2 font-semibold border border-white/10 transition active:scale-95;}
-    .btn-primary{@apply bg-gradient-to-br from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500;}
-    .btn-emerald{@apply bg-gradient-to-br from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500;}
-    .btn-purple{@apply bg-gradient-to-br from-indigo-600 to-fuchsia-600 hover:from-indigo-500 hover:to-fuchsia-500;}
-    .chip{@apply text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10;}
-    dialog::backdrop{background:rgba(0,0,0,.7);}
-    dialog{background-color:#0f172a;color:#f8fafc;}
+    .card{ @apply bg-slate-900/60 border border-white/10 rounded-2xl; }
+    .btn{ @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2 font-semibold border border-white/10 transition active:scale-95; }
+    .btn-primary{ @apply bg-gradient-to-br from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500; }
+    .btn-emerald{ @apply bg-gradient-to-br from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500; }
+    .btn-purple{ @apply bg-gradient-to-br from-indigo-600 to-fuchsia-600 hover:from-indigo-500 hover:to-fuchsia-500; }
+    .chip{ @apply text-xs px-2 py-1 rounded-full bg-white/10 border border-white/10; }
+    .badge{ @apply text-xs px-2 py-0.5 rounded-full border; }
+    dialog{ background: transparent; border: 0; padding: 0; }
+    dialog::backdrop{ background: rgba(0,0,0,.6); }
   </style>
 </head>
 <body class="min-h-screen bg-gradient-to-b from-slate-900 via-slate-950 to-black text-slate-100">
@@ -53,55 +42,141 @@
           <option value="asia">ASIA</option>
           <option value="ru">RU</option>
         </select>
-        <button id="toggleTheme" class="btn btn-purple" title="Přepnout téma"><span data-lucide="sun"></span>🌙</button>
-        <button id="openInfo" class="btn btn-emerald"><span data-lucide="info"></span> ℹ️ Info & Novinky</button>
+        <button id="toggleTheme" class="btn btn-purple" title="Přepnout téma"><span data-lucide="sun"></span><span class="hidden md:inline">Téma</span></button>
+        <button id="openInfo" class="btn btn-emerald"><span data-lucide="info"></span><span class="hidden md:inline">Info & Novinky</span></button>
       </div>
     </div>
   </header>
 
   <!-- INFO DIALOG -->
-  <dialog id="infoDialog" class="rounded-2xl p-0 w-[min(95vw,720px)]">
-    <div class="card p-6">
+  <dialog id="infoDialog">
+    <div class="card p-6 w-[min(95vw,720px)]">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-semibold">ℹ️ O stránce</h3>
-        <button class="btn" onclick="infoDialog.close()">❌ Zavřít</button>
+        <button class="btn" onclick="infoDialog.close()">Zavřít</button>
       </div>
       <p class="text-slate-300 mb-4">📊 Přehled statistik World of Tanks. Hledání hráče, garáž, grafy, klany a porovnání.</p>
       <h4 class="font-semibold mb-2">🆕 Co je nového</h4>
       <ul class="list-disc ml-6 space-y-1 text-slate-300">
-        <li>✨ Detail tanku s grafy a filtry</li>
-        <li>👥 Klanové vyhledávání</li>
-        <li>🏆 Top 10 tanků – grafy</li>
-        <li>⚔️ Porovnání hráčů</li>
-        <li>⏳ Poslední aktivita</li>
+        <li>✨ Detail tanku (modal) s mini grafikou + filtry třídy/tieru.</li>
+        <li>👥 Klanové vyhledávání + tabulka členů s prům. winrate vzorku.</li>
+        <li>🏆 Top 10 tanků (DMG) – sloupcový graf.</li>
+        <li>⚔️ Porovnání dvou hráčů.</li>
       </ul>
     </div>
   </dialog>
 
+  <!-- PLAYER SEARCH -->
+  <main class="max-w-7xl mx-auto px-4 py-6 space-y-8">
+    <section class="card p-4">
+      <div class="grid gap-3 md:grid-cols-[1fr_auto] items-center">
+        <div class="flex gap-2 w-full">
+          <input id="playerInput" class="flex-1 bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2" placeholder="Hledat hráče (nickname)…" />
+        </div>
+        <button id="searchBtn" class="btn btn-primary"><span data-lucide="search"></span>Hledat hráče</button>
+      </div>
+      <p id="errorBox" class="mt-2 text-red-400 hidden"></p>
+      <p class="mt-2 text-slate-400 text-sm">Tip: napiš přezdívku a stiskni Enter. Nebo otevři stránku s parametrem <code>?player=nickname</code> pro automatické načtení.</p>
+    </section>
+
+    <!-- KPIs + Charts -->
+    <section id="playerSection" class="hidden space-y-6">
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 id="playerName" class="text-2xl font-bold">—</h2>
+          <div class="text-slate-400 text-sm">Region: <span id="playerRegion">EU</span> • ID: <span id="playerId">—</span> • Poslední bitva: <span id="lastBattle">—</span></div>
+        </div>
+      </div>
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="card p-4"><div class="text-xs text-slate-400">Bitvy</div><div id="kpiBattles" class="text-xl font-semibold">-</div></div>
+        <div class="card p-4"><div class="text-xs text-slate-400">Výhry</div><div id="kpiWins" class="text-xl font-semibold">-</div></div>
+        <div class="card p-4"><div class="text-xs text-slate-400">Prohry</div><div id="kpiLosses" class="text-xl font-semibold">-</div></div>
+        <div class="card p-4"><div class="text-xs text-slate-400">Winrate</div><div id="kpiWR" class="text-xl font-semibold">-</div></div>
+        <div class="card p-4"><div class="text-xs text-slate-400">DMG celkem</div><div id="kpiDmg" class="text-xl font-semibold">-</div></div>
+        <div class="card p-4"><div class="text-xs text-slate-400">Průměr DMG / bitvu</div><div id="kpiAvg" class="text-xl font-semibold">-</div></div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="card p-4"><h3 class="font-semibold mb-2">Výhry vs Prohry</h3><canvas id="barWinLoss" height="200"></canvas></div>
+        <div class="card p-4"><h3 class="font-semibold mb-2">Podíl výher/proher</h3><canvas id="pieWinLoss" height="200"></canvas></div>
+        <div class="card p-4"><h3 class="font-semibold mb-2">Top 10 tanků podle DMG</h3><canvas id="barTopDmg" height="200"></canvas></div>
+      </div>
+
+      <!-- GARAGE -->
+      <section class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xl font-semibold">Garáž tanků</h3>
+          <div class="flex items-center gap-2 text-sm">
+            <select id="filterTier" class="bg-slate-800/70 border border-white/10 rounded-xl px-2 py-1">
+              <option value="">Všechny tiery</option>
+              <option>10</option><option>9</option><option>8</option><option>7</option><option>6</option><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option>
+            </select>
+            <select id="filterClass" class="bg-slate-800/70 border border-white/10 rounded-xl px-2 py-1">
+              <option value="">Všechny třídy</option>
+              <option value="heavyTank">heavyTank</option>
+              <option value="mediumTank">mediumTank</option>
+              <option value="lightTank">lightTank</option>
+              <option value="AT-SPG">AT-SPG</option>
+              <option value="SPG">SPG</option>
+            </select>
+          </div>
+        </div>
+        <div id="garageGrid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+      </section>
+    </section>
+
+    <!-- PLAYER COMPARE -->
+    <section class="card p-4">
+      <h3 class="font-semibold mb-3">Porovnání hráčů</h3>
+      <div class="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
+        <input id="cmpA" class="bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2" placeholder="Hráč A" />
+        <input id="cmpB" class="bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2" placeholder="Hráč B" />
+        <button id="cmpBtn" class="btn btn-emerald"><span data-lucide="git-compare"></span>Porovnat</button>
+      </div>
+      <div id="cmpResult" class="mt-4 hidden">
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="card p-4"><h4 id="cmpNameA" class="font-semibold mb-2">—</h4><div id="cmpKpiA" class="grid grid-cols-2 gap-2"></div></div>
+          <div class="card p-4"><h4 id="cmpNameB" class="font-semibold mb-2">—</h4><div id="cmpKpiB" class="grid grid-cols-2 gap-2"></div></div>
+        </div>
+        <div class="card p-4 mt-4"><h4 class="font-semibold mb-2">Bitvy / Výhry (A vs B)</h4><canvas id="cmpChart" height="160"></canvas></div>
+      </div>
+    </section>
+
+    <!-- CLANS -->
+    <section class="card p-4">
+      <h3 class="font-semibold mb-3">Klanové statistiky</h3>
+      <div class="grid md:grid-cols-[1fr_auto] gap-3 items-center">
+        <input id="clanInput" class="bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2" placeholder="Hledat klan (tag nebo název)…" />
+        <button id="clanBtn" class="btn btn-primary"><span data-lucide="search"></span>Najít klan</button>
+      </div>
+      <div id="clanResult" class="mt-4 hidden"></div>
+    </section>
+  </main>
+
   <!-- TANK DETAIL DIALOG -->
-  <dialog id="tankDialog" class="rounded-2xl p-0 w-[min(95vw,720px)]">
-    <div class="card p-0 overflow-hidden">
+  <dialog id="tankDialog">
+    <div class="card p-0 overflow-hidden w-[min(95vw,720px)]">
       <div class="p-4 border-b border-white/10 flex items-center justify-between">
         <div>
           <h4 id="tankTitle" class="font-semibold">Tank</h4>
           <div id="tankMeta" class="text-xs text-slate-400">—</div>
         </div>
-        <button class="btn" onclick="tankDialog.close()">❌ Zavřít</button>
+        <button class="btn" onclick="tankDialog.close()">Zavřít</button>
       </div>
       <div class="p-4 grid md:grid-cols-2 gap-4">
         <div class="space-y-2">
           <img id="tankImage" class="w-full h-40 object-contain bg-slate-800 rounded-xl" />
           <div class="grid grid-cols-2 gap-2 text-sm">
-            <div>⚔️ <div class="text-xs text-slate-400">Bitvy</div><div id="tdBattles" class="font-semibold">-</div></div>
-            <div>🏆 <div class="text-xs text-slate-400">Výhry</div><div id="tdWins" class="font-semibold">-</div></div>
-            <div>💀 <div class="text-xs text-slate-400">Prohry</div><div id="tdLosses" class="font-semibold">-</div></div>
-            <div>🎯 <div class="text-xs text-slate-400">Prům. DMG</div><div id="tdAvg" class="font-semibold">-</div></div>
-            <div>🔥 <div class="text-xs text-slate-400">DMG celkem</div><div id="tdDmg" class="font-semibold">-</div></div>
-            <div>💣 <div class="text-xs text-slate-400">Zničené</div><div id="tdFrags" class="font-semibold">-</div></div>
+            <div><div class="text-xs text-slate-400">Bitvy</div><div id="tdBattles" class="font-semibold">-</div></div>
+            <div><div class="text-xs text-slate-400">Výhry</div><div id="tdWins" class="font-semibold">-</div></div>
+            <div><div class="text-xs text-slate-400">Prohry</div><div id="tdLosses" class="font-semibold">-</div></div>
+            <div><div class="text-xs text-slate-400">Prům. DMG</div><div id="tdAvg" class="font-semibold">-</div></div>
+            <div><div class="text-xs text-slate-400">DMG celkem</div><div id="tdDmg" class="font-semibold">-</div></div>
+            <div><div class="text-xs text-slate-400">Zničené</div><div id="tdFrags" class="font-semibold">-</div></div>
           </div>
         </div>
         <div class="space-y-2">
-          <h5 class="font-semibold">📈 Mini grafy</h5>
+          <h5 class="font-semibold">Mini grafy</h5>
           <canvas id="tankPie" height="160"></canvas>
           <canvas id="tankBar" height="160"></canvas>
         </div>
@@ -109,10 +184,130 @@
     </div>
   </dialog>
 
-  <!-- REST STRÁNKY (nezměněno, zachováno z předešlé verze) -->
   <script>
     const WG_APP_ID = "028df7d564e4447b29c6c3ee894142cb";
+    const REGIONS = { eu: 'https://api.worldoftanks.eu', na: 'https://api.worldoftanks.com', asia: 'https://api.worldoftanks.asia', ru: 'https://api.worldoftanks.ru' };
+
+    const CLASS_META = { heavyTank:{ emoji:'🟥', color:'#ef4444' }, mediumTank:{ emoji:'🟩', color:'#22c55e' }, lightTank:{ emoji:'🟨', color:'#eab308' }, 'AT-SPG':{ emoji:'🟪', color:'#a855f7' }, SPG:{ emoji:'🟧', color:'#f59e0b' } };
+    const COLORS = { win:'#10b981', loss:'#ef4444', dmg:'#60a5fa', avg:'#22d3ee', frags:'#f472b6', A:'#38bdf8', B:'#f97316' };
+
+    const $ = (s)=>document.querySelector(s);
+    const $c = (t,cls)=>{ const el=document.createElement(t); if(cls) el.className=cls; return el; };
+    function fmt(n){ if(n===undefined||n===null) return '-'; return n.toLocaleString('cs-CZ'); }
+    function pct(n){ return (n*100).toFixed(2)+'%'; }
+    function tsToStr(ts){ if(!ts) return '—'; const d=new Date(ts*1000); return d.toLocaleString('cs-CZ'); }
+
+    // Make buttons work
+    $('#toggleTheme').addEventListener('click', ()=> document.documentElement.classList.toggle('dark'));
+    $('#openInfo').addEventListener('click', ()=> $('#infoDialog').showModal());
+
     lucide.createIcons();
+
+    async function getJSON(url){ const res=await fetch(url); if(!res.ok) throw new Error('HTTP '+res.status); const data=await res.json(); if(data.status!=='ok') throw new Error(data?.error?.message||'Chyba API'); return data.data; }
+    async function searchAccount(nick, region){ const u=`${REGIONS[region]}/wot/account/list/?application_id=${WG_APP_ID}&search=${encodeURIComponent(nick)}&limit=1`; const d=await getJSON(u); return d?.[0]||null; }
+    async function accountInfo(id, region){ const u=`${REGIONS[region]}/wot/account/info/?application_id=${WG_APP_ID}&account_id=${id}`; const d=await getJSON(u); return d?.[id]; }
+    async function tanksStats(id, region){ const u=`${REGIONS[region]}/wot/tanks/stats/?application_id=${WG_APP_ID}&account_id=${id}`; const d=await getJSON(u); return d?.[id]||[]; }
+    async function vehiclesByIds(ids, region){ const chunk=(a,n)=>a.length?[a.slice(0,n),...chunk(a.slice(n),n)]:[]; let map={}; for(const part of chunk(ids,90)){ const u=`${REGIONS[region]}/wot/encyclopedia/vehicles/?application_id=${WG_APP_ID}&tank_id=${part.join(',')}`; const d=await getJSON(u); Object.assign(map,d);} return map; }
+
+    let CHARTS={}; function upsertChart(ref, ctx, cfg){ if(CHARTS[ref]){ CHARTS[ref].data=cfg.data; CHARTS[ref].options=cfg.options||{}; CHARTS[ref].update(); } else { CHARTS[ref]=new Chart(ctx,cfg);} }
+
+    $('#searchBtn').addEventListener('click', async ()=>{
+      const nick = $('#playerInput').value.trim();
+      const region = $('#region').value;
+      $('#errorBox').classList.add('hidden');
+      try{
+        if(!nick) return;
+        $('#searchBtn').disabled = true; $('#searchBtn').textContent = 'Načítám…';
+        const acc = await searchAccount(nick, region);
+        if(!acc) throw new Error('Hráč nenalezen');
+        const info = await accountInfo(acc.account_id, region);
+        const tstats = await tanksStats(acc.account_id, region);
+        const ids = [...new Set(tstats.map(t=>t.tank_id))];
+        const vmap = await vehiclesByIds(ids, region);
+        renderPlayer(acc, info, tstats, vmap, region);
+      }catch(e){
+        $('#errorBox').textContent = e.message || String(e); $('#errorBox').classList.remove('hidden');
+      }finally{
+        $('#searchBtn').disabled = false; $('#searchBtn').textContent = 'Hledat hráče';
+      }
+    });
+
+    // Enter v inputu = spustí hledání
+    $('#playerInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); $('#searchBtn').click(); } });
+
+    // Auto-načtení z URL parametru ?player=nickname
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const url = new URL(location.href);
+      const p = url.searchParams.get('player');
+      if(p){ $('#playerInput').value = p; $('#searchBtn').click(); }
+      else { $('#playerInput').focus(); }
+    });
+
+    function renderPlayer(acc, info, tstats, vmap, region){
+      const s=info?.statistics?.all||{}; const battles=s.battles||0; const wins=s.wins||0; const draws=s.draws||0; const losses=Math.max(0,battles-wins-draws); const dmg=s.damage_dealt||0; const avg=battles?Math.round(dmg/battles):0; const wr=battles?wins/battles:0;
+      $('#playerSection').classList.remove('hidden');
+      $('#playerName').textContent=acc.nickname; $('#playerRegion').textContent=region.toUpperCase(); $('#playerId').textContent=acc.account_id; $('#lastBattle').textContent=tsToStr(info?.last_battle_time);
+      $('#kpiBattles').textContent=fmt(battles); $('#kpiWins').textContent=fmt(wins); $('#kpiLosses').textContent=fmt(losses); $('#kpiWR').textContent=pct(wr); $('#kpiDmg').textContent=fmt(dmg); $('#kpiAvg').textContent=fmt(avg);
+
+      upsertChart('barWinLoss', $('#barWinLoss'), {type:'bar', data:{labels:['Výhry','Prohry'], datasets:[{label:'Počet', data:[wins,losses], backgroundColor:['#10b981','#ef4444']}]}});
+      upsertChart('pieWinLoss', $('#pieWinLoss'), {type:'pie', data:{labels:['Výhry','Prohry'], datasets:[{data:[wins,losses], backgroundColor:['#10b981','#ef4444']}]} });
+
+      const garage=enrichGarage(tstats, vmap); const topDmg=[...garage].sort((a,b)=>b.dmg-a.dmg).slice(0,10);
+      upsertChart('barTopDmg', $('#barTopDmg'), {type:'bar', data:{labels: topDmg.map(g=>(CLASS_META[g.class]?.emoji||'')+' '+g.name), datasets:[{label:'Celkový DMG', data: topDmg.map(g=>g.dmg), backgroundColor:'#60a5fa'}]}, options:{ indexAxis:'y' }});
+
+      window._GARAGE=garage; renderGarage();
+    }
+
+    function enrichGarage(tstats, vmap){
+      return tstats.map(t=>{ const v=vmap?.[t.tank_id]||{}; const a=t.all||{}; const battles=a.battles||0; const wins=a.wins||0; const draws=a.draws||0; const losses=Math.max(0,battles-wins-draws); const dmg=a.damage_dealt||0; const avg=battles?Math.round(dmg/battles):0; const frags=a.frags||0; const meta=CLASS_META[v.type]||{};
+        return { tank_id:t.tank_id, name:v.name||('Tank '+t.tank_id), tier:v.tier||'?', image:v?.images?.big_icon||v?.images?.small_icon||'', nation:v.nation||'', class:v.type||'', classEmoji:meta.emoji||'', classColor:meta.color||'#64748b', battles,wins,losses,dmg,avg,frags };
+      }).sort((a,b)=>b.battles-a.battles);
+    }
+
+    function renderGarage(){
+      const tier=$('#filterTier').value; const cls=$('#filterClass').value; const grid=$('#garageGrid'); grid.innerHTML='';
+      const list=window._GARAGE?.filter(g=>(!tier||String(g.tier)===tier)&&(!cls||g.class===cls))||[];
+      for(const g of list){
+        const card=$c('div','card overflow-hidden');
+        const img=$c('img','w-full h-36 object-contain bg-slate-800'); img.src=g.image; img.alt=g.name; card.appendChild(img);
+        const box=$c('div','p-4 space-y-2');
+        const top=$c('div','flex items-center justify-between');
+        const l=$c('div'); const badge = `<span class=\"badge\" style=\"border-color:${g.classColor}; color:${g.classColor}\">${g.classEmoji} ${g.class}</span>`; l.innerHTML=`<div class=\"font-semibold\">${g.name}</div><div class=\"text-xs text-slate-400\">Tier ${g.tier} • ${g.nation?.toUpperCase()} • ${badge}</div>`;
+        const r=$c('div','text-right text-sm'); r.innerHTML=`Bitvy: <b>${fmt(g.battles)}</b><div class=\"text-xs text-slate-400\">Výhry: ${fmt(g.wins)} • Prohry: ${fmt(g.losses)}</div>`;
+        top.append(l,r);
+        const grid2=$c('div','grid grid-cols-2 gap-3 text-sm');
+        grid2.innerHTML=`<div><div class=\"text-xs text-slate-400\">DMG celkem</div><div class=\"font-semibold\">${fmt(g.dmg)}</div></div>
+                         <div><div class=\"text-xs text-slate-400\">Prům. DMG</div><div class=\"font-semibold\">${fmt(g.avg)}</div></div>
+                         <div><div class=\"text-xs text-slate-400\">Zničené</div><div class=\"font-semibold\">${fmt(g.frags)}</div></div>
+                         <div><div class=\"text-xs text-slate-400\">Winrate</div><div class=\"font-semibold\">${g.battles?pct(g.wins/g.battles):'-'}</div></div>`;
+        const btn=$c('button','btn btn-emerald w-full'); btn.textContent='Detail tanku'; btn.onclick=()=>openTankDetail(g);
+        box.append(top,grid2,btn); card.appendChild(box); grid.appendChild(card);
+      }
+    }
+    $('#filterTier').addEventListener('change', renderGarage);
+    $('#filterClass').addEventListener('change', renderGarage);
+
+    function openTankDetail(g){
+      $('#tankTitle').textContent = `${g.classEmoji} ${g.name}`;
+      $('#tankMeta').innerHTML = `Tier ${g.tier} • ${g.nation?.toUpperCase()} • <span class='badge' style='border-color:${g.classColor}; color:${g.classColor}'>${g.classEmoji} ${g.class}</span>`;
+      $('#tankImage').src=g.image; $('#tdBattles').textContent=fmt(g.battles); $('#tdWins').textContent=fmt(g.wins); $('#tdLosses').textContent=fmt(g.losses); $('#tdAvg').textContent=fmt(g.avg); $('#tdDmg').textContent=fmt(g.dmg); $('#tdFrags').textContent=fmt(g.frags);
+      upsertChart('tankPie', $('#tankPie'), {type:'doughnut', data:{labels:['Výhry','Prohry'], datasets:[{data:[g.wins,g.losses], backgroundColor:['#10b981','#ef4444']}]} });
+      upsertChart('tankBar', $('#tankBar'), {type:'bar', data:{labels:['DMG celkem','Prům. DMG','Zničené'], datasets:[{data:[g.dmg,g.avg,g.frags], backgroundColor:['#60a5fa','#22d3ee','#f472b6']}]} , options:{ indexAxis:'y' }});
+      $('#tankDialog').showModal();
+    }
+
+    // Compare
+    $('#cmpBtn').addEventListener('click', async ()=>{
+      const a=$('#cmpA').value.trim(); const b=$('#cmpB').value.trim(); const region=$('#region').value; if(!a||!b) return;
+      $('#cmpBtn').disabled=true; $('#cmpBtn').textContent='Načítám…';
+      try{ const [accA,accB]=await Promise.all([searchAccount(a,region), searchAccount(b,region)]); if(!accA||!accB) throw new Error('Hráč A nebo B nenalezen'); const [infoA,infoB]=await Promise.all([accountInfo(accA.account_id,region), accountInfo(accB.account_id,region)]); renderCompare({acc:accA,info:infoA},{acc:accB,info:infoB}); } catch(e){ alert(e.message||String(e)); } finally{ $('#cmpBtn').disabled=false; $('#cmpBtn').textContent='Porovnat'; }
+    });
+    function renderCompare(A,B){ const sA=A.info?.statistics?.all||{}; const sB=B.info?.statistics?.all||{}; const vA={ battles:sA.battles||0, wins:sA.wins||0, losses:(sA.battles||0)-(sA.wins||0)-(sA.draws||0), dmg:sA.damage_dealt||0 }; const vB={ battles:sB.battles||0, wins:sB.wins||0, losses:(sB.battles||0)-(sB.wins||0)-(sB.draws||0), dmg:sB.damage_dealt||0 }; $('#cmpResult').classList.remove('hidden'); $('#cmpNameA').textContent='🅰️ '+A.acc.nickname; $('#cmpNameB').textContent='🅱️ '+B.acc.nickname; $('#cmpKpiA').innerHTML=`<div><div class='text-xs text-slate-400'>Bitvy</div><div class='font-semibold'>${fmt(vA.battles)}</div></div><div><div class='text-xs text-slate-400'>Winrate</div><div class='font-semibold'>${vA.battles?pct(vA.wins/vA.battles):'-'}</div></div><div><div class='text-xs text-slate-400'>Výhry</div><div class='font-semibold'>${fmt(vA.wins)}</div></div><div><div class='text-xs text-slate-400'>DMG</div><div class='font-semibold'>${fmt(vA.dmg)}</div></div>`; $('#cmpKpiB').innerHTML=`<div><div class='text-xs text-slate-400'>Bitvy</div><div class='font-semibold'>${fmt(vB.battles)}</div></div><div><div class='text-xs text-slate-400'>Winrate</div><div class='font-semibold'>${vB.battles?pct(vB.wins/vB.battles):'-'}</div></div><div><div class='text-xs text-slate-400'>Výhry</div><div class='font-semibold'>${fmt(vB.wins)}</div></div><div><div class='text-xs text-slate-400'>DMG</div><div class='font-semibold'>${fmt(vB.dmg)}</div></div>`; upsertChart('cmp', $('#cmpChart'), {type:'bar', data:{labels:['Bitvy','Výhry','Prohry','Celkový DMG'], datasets:[{label:A.acc.nickname, data:[vA.battles,vA.wins,vA.losses,vA.dmg], backgroundColor:'#38bdf8'},{label:B.acc.nickname, data:[vB.battles,vB.wins,vB.losses,vB.dmg], backgroundColor:'#f97316'}]} }); }
+
+    // Clans
+    $('#clanBtn').addEventListener('click', async ()=>{ const q=$('#clanInput').value.trim(); const region=$('#region').value; if(!q) return; $('#clanBtn').disabled=true; $('#clanBtn').textContent='Načítám…'; try{ const cl=await getJSON(`${REGIONS[region]}/wot/clans/list/?application_id=${WG_APP_ID}&search=${encodeURIComponent(q)}&limit=1`); const hit=cl?.[0]; if(!hit) throw new Error('Klan nenalezen'); const info=(await getJSON(`${REGIONS[region]}/wot/clans/info/?application_id=${WG_APP_ID}&clan_id=${hit.clan_id}`))[hit.clan_id]; await renderClan(info,region); } catch(e){ alert(e.message||String(e)); } finally{ $('#clanBtn').disabled=false; $('#clanBtn').textContent='Najít klan'; } });
+
+    async function renderClan(c, region){ const box=$('#clanResult'); box.classList.remove('hidden'); box.innerHTML=''; const head=$c('div','flex items-center justify-between'); head.innerHTML=`<div><div class='text-xl font-semibold'>🏰 [${c.tag}] ${c.name}</div><div class='text-slate-400 text-sm'>Založen: ${new Date(c.created_at*1000).toLocaleDateString('cs-CZ')} • Členů: ${c.members_count}</div></div>`; box.appendChild(head); const tbl=$c('div','overflow-x-auto mt-3'); const table=$c('table','w-full text-sm'); table.innerHTML=`<thead class='text-left text-slate-400'><tr><th class='py-2 pr-4'>Hráč</th><th class='py-2 pr-4'>Role</th><th class='py-2 pr-4'>Přidán</th><th class='py-2'>Winrate (vzorek)</th></tr></thead><tbody></tbody>`; tbl.appendChild(table); box.appendChild(tbl); const tbody=table.querySelector('tbody'); const sample=c.members.slice(0,20); const rows=[]; let wrSum=0,wrCnt=0; for(const m of sample){ try{ const info=await accountInfo(m.account_id, region); const s=info?.statistics?.all||{}; const wr=s.battles? s.wins/s.battles:0; if(s.battles){ wrSum+=wr; wrCnt++; } const tr=$c('tr','border-t border-white/10'); tr.innerHTML=`<td class='py-2 pr-4'>${info.nickname||m.account_name}</td><td class='py-2 pr-4'>${m.role_i18n||m.role}</td><td class='py-2 pr-4'>${new Date(m.joined_at*1000).toLocaleDateString('cs-CZ')}</td><td class='py-2'>${s.battles?pct(wr):'—'}</td>`; rows.push(tr);}catch{}} rows.forEach(r=>tbody.appendChild(r)); const avg=wrCnt? pct(wrSum/wrCnt):'—'; const note=$c('div','mt-2 text-slate-300'); note.textContent=`📊 Průměrný winrate (vzorek ${wrCnt} hráčů z 20): ${avg}`; box.appendChild(note); }
   </script>
 </body>
 </html>
