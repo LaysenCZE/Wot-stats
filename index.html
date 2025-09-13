@@ -9,293 +9,81 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info, Search, Swords, Target, BarChart3, Gauge, Trophy, CircleX, TrendingUp } from "lucide-react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  Tooltip as RTooltip,
-  Legend,
-  CartesianGrid,
-  LineChart,
-  Line,
+BarChart,
+Bar,
+XAxis,
+YAxis,
+ResponsiveContainer,
+Tooltip as RTooltip,
+Legend,
+CartesianGrid,
+LineChart,
+Line,
 } from "recharts";
 
+
 /**
- * WoT Stats – Dark Epic Dashboard
- * - Tmavý vzhled
- * - Průměr DMG, Zničené tanky, Celkové hraní, Win/Loss graf
- * - Tank obrázek (inline SVG)
- * - Tlačítko „Hledat hráče“ + vyhledávací pole
- * - Tlačítko „INFORMACE“ (modal s changelogem/novinkami)
- * - Připraveno pro napojení na API (TODO sekce níže)
- */
+* WoT Stats – Dark Epic Dashboard
+* - Tmavý vzhled
+* - Průměr DMG, Zničené tanky, Celkové hraní, Win/Loss graf
+* - Tank obrázek (inline SVG)
+* - Tlačítko „Hledat hráče“ + vyhledávací pole
+* - Tlačítko „INFORMACE“ (modal s changelogem/novinkami)
+* - Připraveno pro napojení na API (TODO sekce níže)
+*/
+
 
 const demoMatches = [
-  { month: "Leden", vyhry: 42, prohry: 28 },
-  { month: "Únor", vyhry: 38, prohry: 31 },
-  { month: "Březen", vyhry: 45, prohry: 25 },
-  { month: "Duben", vyhry: 47, prohry: 33 },
-  { month: "Květen", vyhry: 50, prohry: 29 },
-  { month: "Červen", vyhry: 41, prohry: 30 },
-  { month: "Červenec", vyhry: 52, prohry: 27 },
+{ month: "Leden", vyhry: 42, prohry: 28 },
+{ month: "Únor", vyhry: 38, prohry: 31 },
+{ month: "Březen", vyhry: 45, prohry: 25 },
+{ month: "Duben", vyhry: 47, prohry: 33 },
+{ month: "Květen", vyhry: 50, prohry: 29 },
+{ month: "Červen", vyhry: 41, prohry: 30 },
+{ month: "Červenec", vyhry: 52, prohry: 27 },
 ];
 
+
 const demoStats = {
-  avgDmg: 2175,
-  destroyed: 1389,
-  battles: 3250,
-  winrate: 57.2,
+avgDmg: 2175,
+destroyed: 1389,
+battles: 3250,
+winrate: 57.2,
 };
 
+
 function TankSVG({ className = "w-full h-full" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 512 256"
-      fill="currentColor"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-    >
-      <g opacity="0.15">
-        <rect x="0" y="200" width="512" height="20" rx="10" />
-      </g>
-      <g>
-        <path d="M64 180h320c28 0 44-24 44-44v-6l28-8c10-3 16-14 13-24-3-10-14-16-24-13l-17 5V73c0-11-9-20-20-20h-58c-5 0-9 4-9 9v26H216l-33-18c-5-3-12-1-15 4l-13 24H64c-18 0-32 14-32 32v20c0 18 14 32 32 32z"/>
-        <circle cx="124" cy="180" r="24" />
-        <circle cx="204" cy="180" r="24" />
-        <circle cx="284" cy="180" r="24" />
-        <circle cx="364" cy="180" r="24" />
-      </g>
-    </svg>
-  );
+return (
+<svg
+className={className}
+viewBox="0 0 512 256"
+fill="currentColor"
+xmlns="http://www.w3.org/2000/svg"
+aria-hidden
+>
+<g opacity="0.15">
+<rect x="0" y="200" width="512" height="20" rx="10" />
+</g>
+<g>
+<path d="M64 180h320c28 0 44-24 44-44v-6l28-8c10-3 16-14 13-24-3-10-14-16-24-13l-17 5V73c0-11-9-20-20-20h-58c-5 0-9 4-9 9v26H216l-33-18c-5-3-12-1-15 4l-13 24H64c-18 0-32 14-32 32v20c0 18 14 32 32 32z"/>
+<circle cx="124" cy="180" r="24" />
+<circle cx="204" cy="180" r="24" />
+<circle cx="284" cy="180" r="24" />
+<circle cx="364" cy="180" r="24" />
+</g>
+</svg>
+);
 }
+
 
 export default function WotStatsDarkEpic() {
-  const [playerQuery, setPlayerQuery] = useState("");
-  const [infoOpen, setInfoOpen] = useState(false);
+const [playerQuery, setPlayerQuery] = useState("");
+const [infoOpen, setInfoOpen] = useState(false);
 
-  // Derivované metriky (můžete nahradit reálnými daty)
-  const lossesTotal = useMemo(
-    () => demoMatches.reduce((acc, m) => acc + m.prohry, 0),
-    []
-  );
-  const winsTotal = useMemo(
-    () => demoMatches.reduce((acc, m) => acc + m.vyhry, 0),
-    []
-  );
 
-  const totalGames = useMemo(() => winsTotal + lossesTotal, [winsTotal, lossesTotal]);
-  const overallAvgDmg = useMemo(() => demoStats.avgDmg, []);
-
-  function onSearchPlayer() {
-    // TODO: Napojit na backend / API (WG/WoT) a přesměrovat na detail hráče
-    // Např.: router.push(`/hrac/${encodeURIComponent(playerQuery)}`)
-    console.log("Hledám hráče:", playerQuery);
-    alert(`Hledám hráče: ${playerQuery}`);
-  }
-
-  return (
-    <TooltipProvider>
-      <div className="min-h-screen w-full bg-gradient-to-b from-neutral-950 via-neutral-900 to-neutral-950 text-neutral-100">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-neutral-900/60 bg-neutral-900/80 border-b border-neutral-800">
-          <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
-            <div className="flex items-center gap-3">
-              <div className="size-9 rounded-xl bg-neutral-800 grid place-items-center">
-                <Gauge className="size-5" />
-              </div>
-              <h1 className="text-lg sm:text-xl font-semibold tracking-tight">WoT Stats</h1>
-              <Badge variant="secondary" className="bg-neutral-800 text-neutral-200 border-neutral-700">Beta</Badge>
-            </div>
-            <div className="ms-auto flex items-center gap-2">
-              <div className="hidden md:flex items-center gap-2">
-                <Input
-                  placeholder="Zadej nickname hráče…"
-                  value={playerQuery}
-                  onChange={(e) => setPlayerQuery(e.target.value)}
-                  className="w-64 bg-neutral-800 border-neutral-700 focus-visible:ring-neutral-400 placeholder:text-neutral-400"
-                />
-                <Button onClick={onSearchPlayer} className="bg-emerald-600 hover:bg-emerald-500">
-                  <Search className="size-4 me-2" /> Hledat hráče
-                </Button>
-              </div>
-              <Button variant="outline" onClick={() => setInfoOpen(true)} className="border-neutral-700 text-neutral-200 bg-neutral-900 hover:bg-neutral-800">
-                <Info className="size-4 me-2" /> INFORMACE
-              </Button>
-            </div>
-          </div>
-        </header>
-
-        {/* Hero / Tank */}
-        <section className="mx-auto max-w-7xl px-4 pt-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-            <Card className="col-span-1 lg:col-span-2 bg-neutral-900/60 border-neutral-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Swords className="size-5"/> Přehled hráče</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <StatChip icon={<Target className="size-4"/>} label="Průměr DMG" value={`${overallAvgDmg.toLocaleString("cs-CZ")}" />
-                  <StatChip icon={<Trophy className="size-4"/>} label="Výhry" value={winsTotal.toLocaleString("cs-CZ")} />
-                  <StatChip icon={<CircleX className="size-4"/>} label="Prohry" value={lossesTotal.toLocaleString("cs-CZ")} />
-                  <StatChip icon={<BarChart3 className="size-4"/>} label="Celkové hraní" value={totalGames.toLocaleString("cs-CZ")} />
-                </div>
-                <Separator className="my-6 bg-neutral-800" />
-                <div className="aspect-[21/9] rounded-2xl bg-gradient-to-tr from-neutral-800/80 to-neutral-700/40 grid place-items-center">
-                  <TankSVG className="w-[88%] max-w-4xl text-neutral-300" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-neutral-900/60 border-neutral-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><TrendingUp className="size-5"/> Souhrn</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 text-sm text-neutral-300">
-                  <div className="flex items-center justify-between">
-                    <span>Celkový průměr DMG</span>
-                    <span className="font-semibold text-neutral-100">{demoStats.avgDmg.toLocaleString("cs-CZ")} dmg</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Zničené tanky</span>
-                    <span className="font-semibold text-neutral-100">{demoStats.destroyed.toLocaleString("cs-CZ")}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Celkový počet bitev</span>
-                    <span className="font-semibold text-neutral-100">{demoStats.battles.toLocaleString("cs-CZ")}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Winrate</span>
-                    <span className="font-semibold text-emerald-400">{demoStats.winrate}%</span>
-                  </div>
-                </div>
-                <Separator className="my-4 bg-neutral-800" />
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Zadej nickname hráče…"
-                    value={playerQuery}
-                    onChange={(e) => setPlayerQuery(e.target.value)}
-                    className="bg-neutral-800 border-neutral-700 focus-visible:ring-neutral-400 placeholder:text-neutral-400"
-                  />
-                  <Button onClick={onSearchPlayer} className="bg-emerald-600 hover:bg-emerald-500 w-nowrap">
-                    <Search className="size-4 me-2" /> Hledat hráče
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        {/* Charts */}
-        <section className="mx-auto max-w-7xl px-4 py-8">
-          <Tabs defaultValue="winloss" className="w-full">
-            <TabsList className="bg-neutral-900 border border-neutral-800">
-              <TabsTrigger value="winloss">Výhry vs. Prohry</TabsTrigger>
-              <TabsTrigger value="trend">Trend po měsících</TabsTrigger>
-            </TabsList>
-            <TabsContent value="winloss">
-              <Card className="bg-neutral-900/60 border-neutral-800">
-                <CardHeader>
-                  <CardTitle>Graf výher a proher</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={demoMatches}>
-                        <CartesianGrid strokeDasharray="4 4" stroke="#27272a" />
-                        <XAxis dataKey="month" stroke="#a1a1aa" tickLine={false} axisLine={{ stroke: "#3f3f46" }} />
-                        <YAxis stroke="#a1a1aa" tickLine={false} axisLine={{ stroke: "#3f3f46" }} />
-                        <RTooltip contentStyle={{ background: "#0a0a0a", border: "1px solid #27272a", color: "#fafafa" }} />
-                        <Legend wrapperStyle={{ color: "#e4e4e7" }} />
-                        <Bar dataKey="vyhry" name="Výhry" fill="#10b981" radius={[6, 6, 0, 0]} />
-                        <Bar dataKey="prohry" name="Prohry" fill="#ef4444" radius={[6, 6, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="trend">
-              <Card className="bg-neutral-900/60 border-neutral-800">
-                <CardHeader>
-                  <CardTitle>Trend průměrného DMG (demo)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={demoMatches.map(m => ({ month: m.month, dmg: 2000 + (m.vyhry - m.prohry) * 10 }))}>
-                        <CartesianGrid strokeDasharray="4 4" stroke="#27272a" />
-                        <XAxis dataKey="month" stroke="#a1a1aa" tickLine={false} axisLine={{ stroke: "#3f3f46" }} />
-                        <YAxis stroke="#a1a1aa" tickLine={false} axisLine={{ stroke: "#3f3f46" }} />
-                        <RTooltip contentStyle={{ background: "#0a0a0a", border: "1px solid #27272a", color: "#fafafa" }} />
-                        <Line type="monotone" dataKey="dmg" name="Průměr DMG" stroke="#10b981" strokeWidth={3} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </section>
-
-        {/* Footer */}
-        <footer className="mx-auto max-w-7xl px-4 pb-10 text-sm text-neutral-400">
-          <Separator className="mb-6 bg-neutral-800" />
-          <div className="flex flex-col md:flex-row items-center justify-between gap-3">
-            <p>© {new Date().getFullYear()} WoT Stats (neoficiální fan projekt)</p>
-            <div className="flex items-center gap-2">
-              <Badge className="bg-neutral-800 border border-neutral-700">Tmavý vzhled</Badge>
-              <Badge className="bg-neutral-800 border border-neutral-700">Epic UI</Badge>
-              <Badge className="bg-neutral-800 border border-neutral-700">Recharts</Badge>
-            </div>
-          </div>
-        </footer>
-
-        {/* INFORMACE modal */}
-        <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
-          <DialogContent className="bg-neutral-900 text-neutral-100 border-neutral-800 sm:max-w-xl">
-            <DialogHeader>
-              <DialogTitle>Novinky & Changelog</DialogTitle>
-              <DialogDescription className="text-neutral-400">
-                Přehled posledních změn a informací k webu.
-              </DialogDescription>
-            </DialogHeader>
-
-            <ul className="space-y-4 text-sm">
-              <li>
-                <div className="font-medium">13. 09. 2025 – Velký tmavý redesign</div>
-                <p className="text-neutral-400">Přidán dashboard, graf výher/proher, souhrnné metriky a vyhledávání hráče.</p>
-              </li>
-              <li>
-                <div className="font-medium">10. 09. 2025 – Modal INFORMACE</div>
-                <p className="text-neutral-400">Nová sekce novinek (changelog) v modálním okně.</p>
-              </li>
-              <li>
-                <div className="font-medium">05. 09. 2025 – Základní statistiky</div>
-                <p className="text-neutral-400">Průměr DMG, zničené tanky a celkové hraní.</p>
-              </li>
-            </ul>
-
-            <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setInfoOpen(false)} className="border-neutral-700 text-neutral-200">Zavřít</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </TooltipProvider>
-  );
-}
-
-function StatChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string; }) {
-  return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
-      <div className="flex items-center gap-2 text-neutral-400 text-xs uppercase tracking-wider">
-        {icon}
-        <span>{label}</span>
-      </div>
-      <div className="mt-2 text-2xl font-semibold text-neutral-100">{value}</div>
-    </div>
-  );
-}
+// Derivované metriky (můžete nahradit reálnými daty)
+const lossesTotal = useMemo(
+() => demoMatches.reduce((acc, m) => acc + m.prohry, 0),
+[]
+);
+const winsTotal = useMemo(
