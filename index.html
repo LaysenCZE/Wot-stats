@@ -1,477 +1,98 @@
-<!DOCTYPE html>
-<html lang="cs" class="dark">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WoT Stats – Brutální Dark Dashboard (real API)</title>
+import React, { useEffect, useMemo, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
+import { motion } from "framer-motion";
+import { Info, Moon, SunMedium, Search, Swords, Target, Gauge, Trophy, ShieldCheck, TrendingUp, Skull, AlertCircle } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend, LineChart, Line } from "recharts";
 
-  <!-- Tailwind CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 
-  <meta name="color-scheme" content="dark">
-  <style>
-    :root{--neo:#10b981}
-    html,body{background:#050505;color:#e5e5e5}
-    .hard{border-radius:14px}
-    .neo-border{box-shadow:0 0 0 1px #1f1f1f, inset 0 0 0 1px #1f1f1f}
-    .scanlines:before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(rgba(255,255,255,.03) 50%,transparent 50%);background-size:100% 2px;mix-blend-mode:overlay;opacity:.35}
-    .btn{transition:transform .08s ease, box-shadow .2s ease}
-    .btn:active{transform:translateY(1px)}
-    .skeleton{background:linear-gradient(90deg,#111 25%,#1b1b1b 37%,#111 63%);background-size:400% 100%;animation:shimmer 1.2s infinite}
-    @keyframes shimmer{0%{background-position:100% 0}100%{background-position:0 0}}
-    .badge{font-size:10px;padding:.25rem .5rem;border-radius:.5rem;border:1px solid #2a2a2a;background:#0f0f0f}
-  </style>
-</head>
-<body class="scanlines bg-neutral-950 text-neutral-100 selection:bg-emerald-500/40">
+/**
+* WoT Stats – Jednostránková aplikace
+*
+* Funkce:
+* - Hledání hráčů (nickname -> account_id) přes Wargaming Public API
+* - Přehled hráče: bitvy, výhry, prohry, winrate, celkové DMG, průměr DMG, zničená vozidla
+* - Grafy: výhry vs prohry (bar), přehled metrik (line), koláč výher/proher
+* - Garáž tanků: obrázek, tier, bitvy, výhry/prohry, celkové DMG, průměr DMG, zničené vozidla
+* - Tmavý režim (toggle), pestrá animovaná tlačítka, Info/Novinky (Dialog)
+*
+* POZN.: Vyžaduje WG API APP ID (viz const WG_APP_ID). Pro provoz na frontendu může být potřeba CORS proxy.
+*/
 
-  <!-- Header -->
-  <header class="sticky top-0 z-30 backdrop-blur bg-neutral-950/80 border-b border-neutral-900">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
-      <div class="flex items-center gap-3">
-        <div class="size-10 hard bg-neutral-900 neo-border grid place-items-center">
-          <svg class="size-5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7v5l3 3"/></svg>
-        </div>
-        <div>
-          <h1 class="text-xl font-semibold tracking-tight">WoT Stats</h1>
-          <div class="text-[10px] uppercase text-neutral-400 -mt-1">Brutální Dark UI • Real API</div>
-        </div>
-      </div>
 
-      <!-- Hledání hráče -->
-      <div class="ms-auto w-full max-w-xl">
-        <div class="flex gap-2">
-          <input id="playerInput" placeholder="Zadej nickname hráče…"
-                 class="w-full hard px-3 py-2 bg-neutral-900 border border-neutral-800 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-          <button id="searchBtn" class="btn hard px-4 py-2 bg-emerald-600 hover:bg-emerald-500 font-medium border border-emerald-500/50">
-            Hledat hráče
-          </button>
-        </div>
-        <!-- Inline výsledek (shrnutí) -->
-        <div id="searchResult" class="hidden mt-3 hard neo-border bg-neutral-900/70 p-4"></div>
-      </div>
+// TODO: nastavte své WG APP ID
+const WG_APP_ID = process.env.NEXT_PUBLIC_WG_APP_ID || "YOUR_WG_APP_ID"; // vložte klíč nebo nastavte ENV
 
-      <!-- APP_ID -->
-      <button id="apikeyBtn" class="btn hard px-3 py-2 border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-sm">API klíč</button>
-    </div>
-  </header>
 
-  <main class="max-w-7xl mx-auto px-4">
-    <!-- Stat souhrn -->
-    <section class="pt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 hard neo-border bg-neutral-900/60">
-        <div class="p-5 border-b border-neutral-900 flex items-center justify-between">
-          <h2 class="text-base font-semibold flex items-center gap-2">
-            <svg class="size-5 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 9l7-7M2 22l7-7" stroke-width="1.5"/></svg>
-            Přehled hráče
-          </h2>
-          <span id="playerBadge" class="badge hidden"></span>
-        </div>
-        <div class="p-5">
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="hard neo-border bg-neutral-900/60 p-4">
-              <div class="flex items-center gap-2 text-neutral-400 text-xs uppercase tracking-wider">🎯 <span>Průměr DMG</span></div>
-              <div id="avgDmg" class="mt-2 text-2xl font-semibold skeleton">—</div>
-            </div>
-            <div class="hard neo-border bg-neutral-900/60 p-4">
-              <div class="flex items-center gap-2 text-neutral-400 text-xs uppercase tracking-wider">🏆 <span>Výhry</span></div>
-              <div id="wins" class="mt-2 text-2xl font-semibold skeleton">—</div>
-            </div>
-            <div class="hard neo-border bg-neutral-900/60 p-4">
-              <div class="flex items-center gap-2 text-neutral-400 text-xs uppercase tracking-wider">❌ <span>Prohry</span></div>
-              <div id="losses" class="mt-2 text-2xl font-semibold skeleton">—</div>
-            </div>
-            <div class="hard neo-border bg-neutral-900/60 p-4">
-              <div class="flex items-center gap-2 text-neutral-400 text-xs uppercase tracking-wider">📊 <span>Bitvy celkem</span></div>
-              <div id="games" class="mt-2 text-2xl font-semibold skeleton">—</div>
-            </div>
-          </div>
+// Regiony API
+const REGIONS = {
+eu: "https://api.worldoftanks.eu",
+na: "https://api.worldoftanks.com",
+asia: "https://api.worldoftanks.asia",
+ru: "https://api.worldoftanks.ru",
+} as const;
 
-          <div class="my-6 h-px bg-neutral-900"></div>
 
-          <!-- Tank -->
-          <div class="aspect-[21/9] hard neo-border grid place-items-center bg-neutral-950 relative overflow-hidden">
-            <div class="absolute inset-x-0 -top-1 h-1" style="background:linear-gradient(90deg,rgba(16,185,129,.35),transparent)"></div>
-            <svg viewBox="0 0 512 256" class="w-[88%] max-w-4xl text-neutral-300" fill="currentColor" aria-hidden>
-              <g opacity="0.15"><rect x="0" y="200" width="512" height="20" rx="10" /></g>
-              <path d="M64 180h320c28 0 44-24 44-44v-6l28-8c10-3 16-14 13-24-3-10-14-16-24-13l-17 5V73c0-11-9-20-20-20h-58c-5 0-9 4-9 9v26H216l-33-18c-5-3-12-1-15 4l-13 24H64c-18 0-32 14-32 32v20c0 18 14 32 32 32z"/>
-              <circle cx="124" cy="180" r="24" /><circle cx="204" cy="180" r="24" />
-              <circle cx="284" cy="180" r="24" /><circle cx="364" cy="180" r="24" />
-            </svg>
-          </div>
-        </div>
-      </div>
+// Malá paleta pro koláč
+const PIE_KEYS = ["#3b82f6", "#ef4444"];
 
-      <!-- Souhrn + mini vyhledávání -->
-      <div class="hard neo-border bg-neutral-900/60 p-5">
-        <h3 class="text-base font-semibold">Souhrn</h3>
-        <div class="space-y-3 text-sm text-neutral-300 mt-4">
-          <div class="flex items-center justify-between"><span>Průměr DMG</span><span id="avgDmg2" class="font-semibold text-neutral-100 skeleton">—</span></div>
-          <div class="flex items-center justify-between"><span>Zničené tanky</span><span id="destroyed" class="font-semibold text-neutral-100 skeleton">—</span></div>
-          <div class="flex items-center justify-between"><span>Celkový DMG</span><span id="totalDmg" class="font-semibold text-neutral-100 skeleton">—</span></div>
-          <div class="flex items-center justify-between"><span>Winrate</span><span id="winrate" class="font-semibold text-emerald-400 skeleton">—</span></div>
-        </div>
-        <div class="my-4 h-px bg-neutral-900"></div>
-        <div class="flex gap-2">
-          <input id="playerInput2" placeholder="Zadej nickname hráče…" class="flex-1 hard px-3 py-2 bg-neutral-900 border border-neutral-800 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-          <button id="searchBtn2" class="btn hard px-3 py-2 bg-emerald-600 hover:bg-emerald-500 font-medium border border-emerald-500/50">Hledat hráče</button>
-        </div>
-        <div id="searchResult2" class="hidden mt-3 hard neo-border bg-neutral-900/70 p-4"></div>
-      </div>
-    </section>
 
-    <!-- Grafy -->
-    <section class="py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 hard neo-border bg-neutral-900/60">
-        <div class="p-5 border-b border-neutral-900 flex items-center justify-between">
-          <h3 class="text-base font-semibold">Top 10 tanků podle celkového DMG</h3>
-          <div class="text-xs text-neutral-400">z osobních statistik</div>
-        </div>
-        <div class="p-5"><div class="h-80"><canvas id="topDmgChart"></canvas></div></div>
-      </div>
-      <div class="hard neo-border bg-neutral-900/60">
-        <div class="p-5 border-b border-neutral-900"><h3 class="text-base font-semibold">Rozložení tříd v garáži</h3></div>
-        <div class="p-5"><div class="h-80"><canvas id="classPie"></canvas></div></div>
-      </div>
-    </section>
+// Sjednocení fetch s chybami
+async function getJSON(url: string) {
+const res = await fetch(url);
+if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+const data = await res.json();
+if (data?.status !== "ok") {
+const msg = data?.error?.message || "Neznámá chyba API";
+throw new Error(msg);
+}
+return data;
+}
 
-    <!-- Garáž -->
-    <section class="pb-10">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-base font-semibold">Garáž</h3>
-        <div class="text-xs text-neutral-400" id="garageCount">—</div>
-      </div>
-      <div id="garage" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
-    </section>
-  </main>
 
-  <!-- Modal: API KEY -->
-  <div id="apikeyModal" class="hidden fixed inset-0 z-50 items-center justify-center">
-    <div class="absolute inset-0 bg-black/80"></div>
-    <div class="relative hard neo-border bg-neutral-950 text-neutral-100 max-w-xl w-[92%] mx-auto p-6">
-      <h4 class="text-lg font-semibold mb-1">Nastavit Wargaming <span class="text-emerald-400">application_id</span></h4>
-      <p class="text-neutral-400 mb-4 text-sm">Získej klíč v <em>Developer Room</em> a vlož ho sem. Uloží se do prohlížeče (localStorage).</p>
-      <input id="apikeyInput" placeholder="app_id…" class="w-full mb-3 hard px-3 py-2 bg-neutral-900 border border-neutral-800 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40" />
-      <div class="flex justify-end gap-2">
-        <button id="apikeyCancel" class="btn hard px-3 py-2 border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-sm">Zrušit</button>
-        <button id="apikeySave" class="btn hard px-3 py-2 bg-emerald-600 hover:bg-emerald-500 font-medium border border-emerald-500/50 text-sm">Uložit</button>
-      </div>
-    </div>
-  </div>
+function formatPct(n: number) {
+return (n * 100).toFixed(2) + "%";
+}
 
-  <footer class="max-w-7xl mx-auto px-4 pb-10 text-sm text-neutral-400">
-    <div class="mb-6 h-px bg-neutral-900"></div>
-    <div class="flex items-center justify-between">
-      <p>© <span id="year"></span> WoT Stats (neoficiální fan projekt)</p>
-      <div class="flex items-center gap-2"><span class="badge">Real API</span><span class="badge">Chart.js</span></div>
-    </div>
-  </footer>
 
-  <script>
-    // ===================== KONFIG =====================
-    const WG_API = {
-      base: "https://api.worldoftanks.eu", // pro EU; pro NA změň na .com, RU .ru atd.
-      appId: null
-    };
-    // ===================== UTIL ======================
-    const $ = sel => document.querySelector(sel);
-    const $$ = sel => Array.from(document.querySelectorAll(sel));
-    const fmt = n => (n||0).toLocaleString("cs-CZ");
+function niceInt(n: number | undefined | null) {
+if (!n && n !== 0) return "-";
+return n.toLocaleString("cs-CZ");
+}
 
-    function getUrlParam(name){
-      const u = new URL(location.href);
-      return u.searchParams.get(name);
-    }
-    function loadAppId(){
-      const fromUrl = getUrlParam("app_id");
-      if(fromUrl){ localStorage.setItem("WG_APP_ID", fromUrl); }
-      WG_API.appId = localStorage.getItem("WG_APP_ID") || fromUrl || "";
-    }
-    function ensureAppId(){
-      loadAppId();
-      if(!WG_API.appId){
-        openApiModal();
-        return false;
-      }
-      return true;
-    }
 
-    // ===================== API FUNKCE =====================
-    async function wgFetch(path, params = {}){
-      if(!WG_API.appId) throw new Error("Chybí application_id");
-      const url = new URL(WG_API.base + path);
-      url.searchParams.set("application_id", WG_API.appId);
-      Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
-      const res = await fetch(url.toString());
-      if(!res.ok) throw new Error("HTTP " + res.status);
-      const json = await res.json();
-      if(json.status !== "ok") throw new Error(JSON.stringify(json.error || json));
-      return json.data;
-    }
+export default function WoTStatsApp() {
+const [dark, setDark] = useState<boolean>(true);
+const [region, setRegion] = useState<keyof typeof REGIONS>("eu");
+const [query, setQuery] = useState("");
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState<string | null>(null);
+const [player, setPlayer] = useState<any | null>(null); // account/info
+const [tanks, setTanks] = useState<any[]>([]); // tanks/stats
+const [ency, setEncy] = useState<Record<string, any>>({}); // vehicles encyclopedia by tank_id
 
-    async function findAccount(nick){
-      const data = await wgFetch("/wot/account/list/", { search: nick, limit: 1 });
-      return data && data[0];
-    }
-    async function getAccountInfo(account_id){
-      return await wgFetch("/wot/account/info/", {
-        account_id,
-        fields: "statistics.all.battles,statistics.all.wins,statistics.all.damage_dealt,created_at,nickname"
-      });
-    }
-    async function getTankStats(account_id){
-      // Vrací pole tanků se stats (battles, damage_dealt, frags, tank_id)
-      return await wgFetch("/wot/tanks/stats/", {
-        account_id,
-        fields: "tank_id,all.battles,all.wins,all.damage_dealt,all.frags,mark_of_mastery",
-        in_garage: "1" // jen garáž; můžeš změnit na 0/1/„“ podle potřeby
-      });
-    }
-    async function getVehiclesInfo(tankIds){
-      // Dotaz ve skupinách (API má limit délky URL)
-      const chunks = [];
-      for(let i=0; i<tankIds.length; i+=100){ chunks.push(tankIds.slice(i,i+100)); }
-      const results = {};
-      for(const ch of chunks){
-        const data = await wgFetch("/wot/encyclopedia/vehicles/", {
-          tank_id: ch.join(","),
-          fields: "name,short_name,tier,type,images.big_icon,images.contour_icon,images.small_icon"
-        });
-        Object.assign(results, data);
-      }
-      return results;
-    }
 
-    // ===================== RENDER =====================
-    let topDmgChart, classPie;
-    function resetSkeleton(){
-      $("#avgDmg").classList.add("skeleton");
-      $("#wins").classList.add("skeleton");
-      $("#losses").classList.add("skeleton");
-      $("#games").classList.add("skeleton");
-      $("#avgDmg2").classList.add("skeleton");
-      $("#destroyed").classList.add("skeleton");
-      $("#totalDmg").classList.add("skeleton");
-      $("#winrate").classList.add("skeleton");
-      $("#garage").innerHTML = "";
-      $("#garageCount").textContent = "—";
-      $("#searchResult").classList.add("hidden");
-      $("#searchResult2").classList.add("hidden");
-      $("#playerBadge").classList.add("hidden");
-    }
-    function fillSummary({ battles, wins, totalDmg }){
-      const avg = battles ? Math.round(totalDmg / battles) : 0;
-      $("#avgDmg").textContent  = fmt(avg);
-      $("#avgDmg2").textContent = fmt(avg) + " dmg";
-      $("#wins").textContent    = fmt(wins);
-      $("#losses").textContent  = fmt(battles - wins);
-      $("#games").textContent   = fmt(battles);
-      $("#totalDmg").textContent = fmt(totalDmg);
-      const wr = battles ? (wins / battles * 100) : 0;
-      $("#winrate").textContent = wr.toFixed(2) + "%";
+// Dark mode
+useEffect(() => {
+const root = document.documentElement;
+if (dark) root.classList.add("dark"); else root.classList.remove("dark");
+}, [dark]);
 
-      $$("#avgDmg, #wins, #losses, #games, #avgDmg2, #destroyed, #totalDmg, #winrate")
-        .forEach(el=>el.classList.remove("skeleton"));
-    }
-    function renderInlineResults(container, account, summary){
-      const { nickname } = account;
-      const { battles, wins, avg, destroyed } = summary;
-      container.innerHTML = `
-        <div class="flex items-start gap-4">
-          <div class="hard size-12 grid place-items-center bg-neutral-950 border border-neutral-800 text-emerald-400 font-semibold">${nickname.slice(0,2).toUpperCase()}</div>
-          <div class="flex-1">
-            <div class="flex items-center justify-between">
-              <div>
-                <div class="text-sm text-neutral-400 uppercase">Hráč</div>
-                <div class="text-lg font-semibold">${nickname}</div>
-              </div>
-              <div class="text-right">
-                <div class="text-sm text-neutral-400 uppercase">Winrate</div>
-                <div class="text-lg font-semibold text-emerald-400">${(wins/battles*100).toFixed(2)}%</div>
-              </div>
-            </div>
-            <div class="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div class="hard border border-neutral-800 bg-neutral-950 p-3">
-                <div class="text-[11px] text-neutral-400 uppercase">Průměr DMG</div>
-                <div class="text-base font-semibold">${fmt(avg)} dmg</div>
-              </div>
-              <div class="hard border border-neutral-800 bg-neutral-950 p-3">
-                <div class="text-[11px] text-neutral-400 uppercase">Zničené tanky</div>
-                <div id="destroyedInline" class="text-base font-semibold">${fmt(destroyed)}</div>
-              </div>
-              <div class="hard border border-neutral-800 bg-neutral-950 p-3">
-                <div class="text-[11px] text-neutral-400 uppercase">Bitvy celkem</div>
-                <div class="text-base font-semibold">${fmt(battles)}</div>
-              </div>
-              <div class="hard border border-neutral-800 bg-neutral-950 p-3">
-                <div class="text-[11px] text-neutral-400 uppercase">Nick</div>
-                <div class="text-base font-semibold">${nickname}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      container.classList.remove("hidden");
-    }
-    function renderGarage(tanks, vehiclesMap){
-      const wrap = $("#garage");
-      wrap.innerHTML = "";
-      let destroyedTotal = 0;
 
-      tanks.forEach(t=>{
-        const all = t.all || {};
-        const veh = vehiclesMap[t.tank_id] || {};
-        const img = (veh?.images?.big_icon) || (veh?.images?.small_icon) || (veh?.images?.contour_icon) || "";
-        const name = veh.short_name || veh.name || ("Tank " + t.tank_id);
-        const tier = veh.tier ?? "?";
-        const type = veh.type || "?";
-        const battles = all.battles || 0;
-        const dmg = all.damage_dealt || 0;
-        const avg = battles ? Math.round(dmg / battles) : 0;
-        const frags = all.frags || 0;
-        destroyedTotal += frags;
+// Changelog – upravujte podle potřeby
+const changelog = [
+{ date: "2025-09-13", items: ["První verze: hledání hráčů, přehled, grafy, garáž.", "Tmavý režim + animovaná barevná tlačítka.", "Info/Novinky v modalu."] },
+];
 
-        const el = document.createElement("div");
-        el.className = "hard neo-border bg-neutral-900/60 overflow-hidden";
-        el.innerHTML = `
-          <div class="aspect-[16/9] bg-neutral-950 relative">
-            ${img ? `<img src="${img}" alt="${name}" class="absolute inset-0 w-full h-full object-contain p-4">` : ""}
-            <div class="absolute left-0 top-0 m-2 badge">${type} • T${tier}</div>
-          </div>
-          <div class="p-4">
-            <div class="font-semibold">${name}</div>
-            <div class="mt-2 grid grid-cols-2 gap-2 text-sm">
-              <div class="p-2 bg-neutral-950 hard border border-neutral-800"><div class="text-[11px] uppercase text-neutral-400">Bitvy</div><div class="font-semibold">${fmt(battles)}</div></div>
-              <div class="p-2 bg-neutral-950 hard border border-neutral-800"><div class="text-[11px] uppercase text-neutral-400">Prům. DMG</div><div class="font-semibold">${fmt(avg)}</div></div>
-              <div class="p-2 bg-neutral-950 hard border border-neutral-800"><div class="text-[11px] uppercase text-neutral-400">Celkový DMG</div><div class="font-semibold">${fmt(dmg)}</div></div>
-              <div class="p-2 bg-neutral-950 hard border border-neutral-800"><div class="text-[11px] uppercase text-neutral-400">Zničené</div><div class="font-semibold">${fmt(frags)}</div></div>
-            </div>
-          </div>
-        `;
-        wrap.appendChild(el);
-      });
 
-      $("#destroyed").textContent = fmt(destroyedTotal);
-      $("#garageCount").textContent = `Tanků v garáži: ${fmt(tanks.length)}`;
-      // také inline box (pokud je otevřený)
-      const di = $("#destroyedInline"); if(di) di.textContent = fmt(destroyedTotal);
-    }
-
-    function renderCharts(tanks, vehiclesMap){
-      // Top 10 podle damage_dealt
-      const rows = tanks.map(t=>({
-        name: (vehiclesMap[t.tank_id]?.short_name) || (vehiclesMap[t.tank_id]?.name) || t.tank_id,
-        dmg: t.all?.damage_dealt || 0
-      })).sort((a,b)=>b.dmg-a.dmg).slice(0,10);
-
-      const ctx1 = $("#topDmgChart");
-      if(topDmgChart) topDmgChart.destroy();
-      topDmgChart = new Chart(ctx1, {
-        type: "bar",
-        data: {
-          labels: rows.map(r=>r.name),
-          datasets: [{ label:"Celkový DMG", data: rows.map(r=>r.dmg), backgroundColor:"rgba(16,185,129,.7)"}]
-        },
-        options: {
-          responsive:true, maintainAspectRatio:false,
-          scales:{ x:{ ticks:{color:"#a1a1aa"}, grid:{color:"#1f2937"}}, y:{ ticks:{color:"#a1a1aa"}, grid:{color:"#1f2937"} } },
-          plugins:{ legend:{ labels:{ color:"#e5e7eb"} }, tooltip:{ backgroundColor:"#0a0a0a", borderColor:"#262626", borderWidth:1, titleColor:"#fafafa", bodyColor:"#fafafa"} }
-        }
-      });
-
-      // Koláč podle typu
-      const typeCounts = {};
-      tanks.forEach(t=>{
-        const type = vehiclesMap[t.tank_id]?.type || "unknown";
-        typeCounts[type] = (typeCounts[type]||0) + 1;
-      });
-      const ctx2 = $("#classPie");
-      if(classPie) classPie.destroy();
-      classPie = new Chart(ctx2, {
-        type: "doughnut",
-        data: {
-          labels: Object.keys(typeCounts),
-          datasets: [{ data: Object.values(typeCounts), backgroundColor:["#10b981","#22d3ee","#f59e0b","#ef4444","#a78bfa","#f472b6"] }]
-        },
-        options: {
-          responsive:true, maintainAspectRatio:false,
-          plugins:{ legend:{ labels:{ color:"#e5e7eb"} } }
-        }
-      });
-    }
-
-    // ===================== HLEDÁNÍ =====================
-    async function doSearch(nick, outputEl){
-      if(!nick) { outputEl.classList.add("hidden"); outputEl.innerHTML=""; return; }
-      if(!ensureAppId()) return;
-
-      resetSkeleton();
-      try{
-        // 1) najít účet
-        const acc = await findAccount(nick);
-        if(!acc){ outputEl.innerHTML = `<div class="text-sm text-neutral-400">Hráč nenalezen.</div>`; outputEl.classList.remove("hidden"); return; }
-        const account_id = acc.account_id;
-
-        // 2) info
-        const infoMap = await getAccountInfo(account_id);
-        const info = infoMap[account_id] || {};
-        const a = info.statistics?.all || {};
-        const battles = a.battles || 0;
-        const wins = a.wins || 0;
-        const totalDmg = a.damage_dealt || 0;
-
-        // 3) tanky + vehicle info
-        const tanksMap = await getTankStats(account_id); // { account_id: [ ... ] }
-        const tanks = tanksMap[account_id] || [];
-        const ids = Array.from(new Set(tanks.map(t=>t.tank_id)));
-        const vehicles = await getVehiclesInfo(ids);
-
-        // summary
-        const avg = battles ? Math.round(totalDmg / battles) : 0;
-        fillSummary({ battles, wins, totalDmg });
-        $("#playerBadge").textContent = info.nickname || acc.nickname; $("#playerBadge").classList.remove("hidden");
-
-        // inline výsledky
-        renderInlineResults(outputEl, { nickname: info.nickname || acc.nickname }, { battles, wins, avg, destroyed: 0 });
-        $("#searchResult2").innerHTML = $("#searchResult").innerHTML; $("#searchResult2").classList.remove("hidden");
-        $("#searchResult").classList.remove("hidden");
-
-        // garáž a grafy
-        renderGarage(tanks, vehicles);
-        renderCharts(tanks, vehicles);
-      }catch(err){
-        outputEl.innerHTML = `<div class="text-sm text-red-400">Chyba: ${(err && err.message) || err}</div>`;
-        outputEl.classList.remove("hidden");
-      }
-    }
-
-    // ===================== API KEY MODAL =====================
-    const apiModal = $("#apikeyModal");
-    function openApiModal(){ apiModal.classList.remove("hidden"); apiModal.classList.add("flex"); }
-    function closeApiModal(){ apiModal.classList.add("hidden"); apiModal.classList.remove("flex"); }
-    $("#apikeyBtn").addEventListener("click", openApiModal);
-    $("#apikeyCancel").addEventListener("click", closeApiModal);
-    $("#apikeySave").addEventListener("click", ()=>{
-      const v = $("#apikeyInput").value.trim();
-      if(!v) return;
-      localStorage.setItem("WG_APP_ID", v);
-      WG_API.appId = v;
-      closeApiModal();
-    });
-
-    // ===================== INIT =====================
-    $("#year").textContent = new Date().getFullYear();
-    loadAppId();
-    if(!WG_API.appId) openApiModal();
-
-    // Handlery hledání
-    const input1 = $("#playerInput");
-    const input2 = $("#playerInput2");
-    $("#searchBtn").addEventListener("click", ()=> doSearch(input1.value.trim(), $("#searchResult")));
-    $("#searchBtn2").addEventListener("click", ()=> doSearch(input2.value.trim(), $("#searchResult2")));
-    input1.addEventListener("keydown", e=>{ if(e.key==="Enter") $("#searchBtn").click(); });
-    input2.addEventListener("keydown", e=>{ if(e.key==="Enter") $("#searchBtn2").click(); });
-  </script>
-</body>
-</html>
+async function searchPlayer() {
+setError(null);
+setPlayer(null);
