@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WoT Stats – Temná webovka s grafy</title>
+<meta name="description" content="WoT Stats – přehled tanků, garáž, průměrné poškození, novinky a info. Temný vzhled, responzivní UI a grafy.">
+
+
+<!-- Open Graph / SEO -->
+<meta property="og:title" content="WoT Stats" />
+<meta property="og:description" content="Přehled tanků, grafy, garáž, průměrné dmg a novinky." />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="theme-color" content="#0b0e12" />
+
+
+<!-- Icons -->
+<link rel="icon" type="image/png" href="favicon.png" sizes="32x32" />
+<link rel="icon" type="image/png" href="favicon-256.png" sizes="256x256" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="shortcut icon" href="favicon.ico" />
+
+
+<link rel="preload" as="image" href="logo.png" />
+
+
+<link rel="stylesheet" href="style.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<header class="site-header">
+<div class="wrap header-inner">
+<div class="brand">
+<img src="logo.png" alt="WoT Stats" class="logo" />
+<div class="brand-text">
+<h1>WoT Stats</h1>
+<p class="tag">Grafy • Garáž • Průměrné DMG</p>
+</div>
+</div>
+<nav class="main-nav">
+<button class="nav-btn" data-section="dashboard">Dashboard</button>
+<button class="nav-btn" data-section="garage">Garáž</button>
+<button class="nav-btn" data-section="news">Novinky</button>
+<button id="infoBtn" class="pill">INFO</button>
+</nav>
+</div>
+</header>
+
+
+<main class="wrap">
+<!-- DASHBOARD -->
+<section id="dashboard" class="section is-active">
+<div class="grid-2">
+<div class="card">
+<div class="card-head">
+<h2>Průměrné poškození (DMG) podle třídy</h2>
+</div>
+<canvas id="avgDmgChart" height="140"></canvas>
+</div>
+<div class="card">
+<div class="card-head">
+<h2>Winrate (%) podle třídy</h2>
+</div>
+<canvas id="winRateChart" height="140"></canvas>
+</div>
+</div>
+
+
+<div class="card mt">
+<div class="card-head">
+<h2>Top 5 tanků – průměrné dmg</h2>
+</div>
+<div class="tank-row">
+<div class="tank-card">
+<img src="tank_light.png" alt="Lehký tank" />
+<div class="tank-meta">
+<strong>LT-1 Swift</strong>
+<span>Průměr DMG: <b>1450</b></span>
+</div>
+</div>
+<div class="tank-card">
+<img src="tank_medium.png" alt="Střední tank" />
+<div class="tank-meta">
+<strong>MT-7 Viper</strong>
+<span>Průměr DMG: <b>1950</b></span>
+</div>
+</div>
+<div class="tank-card">
+<img src="tank_heavy.png" alt="Těžký tank" />
+<div class="tank-meta">
+<strong>HT-9 Rhino</strong>
+</html>
