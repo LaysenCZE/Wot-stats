@@ -265,9 +265,11 @@
       if(!window.Chart) return;
       Chart.defaults.color = '#e2e8f0';            // slate-200
       Chart.defaults.borderColor = 'rgba(148,163,184,.25)'; // slate-400/25
+      Chart.defaults.font = { size: 13 };
       if(Chart.defaults.plugins && Chart.defaults.plugins.legend && Chart.defaults.plugins.legend.labels){
         Chart.defaults.plugins.legend.labels.color = '#e2e8f0';
       }
+    }
     }
     applyChartDarkTheme();
 
@@ -424,6 +426,18 @@
 
     function openTankDetail(g){
       $('#tankTitle').textContent = `${g.classEmoji} ${g.name}`;
+      $('#tankMeta').innerHTML = `Tier ${g.tier} • ${g.nation?.toUpperCase()} • <span class='badge' style='border-color:${g.classColor}; color:${g.classColor}'>${g.classEmoji} ${g.class}</span>`;
+      $('#tankImage').src = g.image;
+      $('#tdBattles').textContent = fmt(g.battles);
+      $('#tdWins').textContent = fmt(g.wins);
+      $('#tdLosses').textContent = fmt(g.losses);
+      $('#tdAvg').textContent = fmt(g.avg);
+      $('#tdDmg').textContent = fmt(g.dmg);
+      $('#tdFrags').textContent = fmt(g.frags);
+      upsertChart('tankPie', $('#tankPie'), { type:'doughnut', data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Podíl', data:[g.wins,g.losses], backgroundColor:[COLORS.win, COLORS.loss] }] }, options:{ maintainAspectRatio:false, plugins:{ legend:{ labels:{ usePointStyle:true, color:'#e2e8f0' } } } } });
+      upsertChart('tankBar', $('#tankBar'), { type:'bar', data:{ labels:['DMG celkem','Prům. DMG','Zničené'], datasets:[{ label:'Hodnota', data:[g.dmg, g.avg, g.frags], backgroundColor:[COLORS.dmg, COLORS.avg, COLORS.frags] }] }, options:{ maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{ display:true, labels:{ color:'#e2e8f0' } } }, scales:{ x:{ ticks:{ color:'#e2e8f0' }, grid:{ color:'rgba(148,163,184,.2)'} }, y:{ ticks:{ color:'#e2e8f0' }, grid:{ color:'rgba(148,163,184,.1)'} } } } });
+      openModal('tankModal');
+    } ${g.name}`;
       $('#tankMeta').innerHTML = `Tier ${g.tier} • ${g.nation?.toUpperCase()} • <span class='badge' style='border-color:${g.classColor}; color:${g.classColor}'>${g.classEmoji} ${g.class}</span>`;
       $('#tankImage').src = g.image;
       $('#tdBattles').textContent = fmt(g.battles);
