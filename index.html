@@ -3,14 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WoT Stats – stable v3</title>
+  <title>WoT Stats – stable v4</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = { darkMode:'class' };
-  </script>
+  <script>tailwind.config={darkMode:'class'};</script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
@@ -63,12 +61,13 @@
           <h3 class="text-lg font-semibold">O stránce</h3>
           <button class="btn" onclick="closeModal('infoModal')">Zavřít</button>
         </div>
-        <p class="text-slate-300 mb-4">Stabilní verze s opravami skriptů (v3).</p>
+        <p class="text-slate-300 mb-4">Stabilní v4 • Přidáno: Porovnání hráčů, Žebříček, grafy garáže (třídy + top bitvy), Klanové statistiky, emotikony a barvy tříd.</p>
       </div>
     </div>
   </div>
 
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-8">
+    <!-- Hledání hráče -->
     <section class="card p-4">
       <div class="grid gap-3 md:grid-cols-[1fr_auto] items-center">
         <input id="playerInput" class="bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2" placeholder="Hledat hráče (nickname)…" />
@@ -78,6 +77,7 @@
       <p class="mt-2 text-slate-400 text-sm">Tip: Enter spustí hledání. Lze také `?player=nickname`.</p>
     </section>
 
+    <!-- Výstup hráče -->
     <section id="playerSection" class="hidden space-y-6">
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -100,10 +100,63 @@
         <div class="card p-4"><h3 class="font-semibold mb-2">Top 10 tanků podle DMG</h3><canvas id="barTopDmg" height="200"></canvas></div>
       </div>
 
+      <!-- Extra grafy garáže -->
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="card p-4"><h3 class="font-semibold mb-2">Rozložení podle tříd</h3><canvas id="pieClasses" height="220"></canvas></div>
+        <div class="card p-4"><h3 class="font-semibold mb-2">Top 10 podle počtu bitev</h3><canvas id="barTopBattles" height="220"></canvas></div>
+      </div>
+
+      <!-- Garáž -->
       <section class="space-y-3">
         <h3 class="text-xl font-semibold">Garáž tanků</h3>
         <div id="garageGrid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
       </section>
+    </section>
+
+    <!-- Porovnání hráčů -->
+    <section class="card p-4">
+      <h3 class="font-semibold mb-3">Porovnání hráčů</h3>
+      <div class="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
+        <input id="cmpA" class="bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2" placeholder="Hráč A" />
+        <input id="cmpB" class="bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2" placeholder="Hráč B" />
+        <button id="cmpBtn" class="btn btn-emerald"><span data-lucide="git-compare"></span>Porovnat</button>
+      </div>
+      <div id="cmpResult" class="mt-4 hidden">
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="card p-4"><h4 id="cmpNameA" class="font-semibold mb-2">—</h4><div id="cmpKpiA" class="grid grid-cols-2 gap-2"></div></div>
+          <div class="card p-4"><h4 id="cmpNameB" class="font-semibold mb-2">—</h4><div id="cmpKpiB" class="grid grid-cols-2 gap-2"></div></div>
+        </div>
+        <div class="card p-4 mt-4"><h4 class="font-semibold mb-2">A vs B</h4><canvas id="cmpChart" height="160"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Klanové statistiky -->
+    <section class="card p-4">
+      <h3 class="font-semibold mb-3">Klanové statistiky</h3>
+      <div class="grid md:grid-cols-[1fr_auto] gap-3 items-center">
+        <input id="clanInput" class="bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2" placeholder="Hledat klan (tag nebo název)…" />
+        <button id="clanBtn" class="btn btn-primary"><span data-lucide="search"></span>Najít klan</button>
+      </div>
+      <div id="clanResult" class="mt-4 hidden"></div>
+    </section>
+
+    <!-- Žebříček -->
+    <section class="card p-4">
+      <h3 class="font-semibold mb-3">Žebříček hráčů (seznam přezdívek)</h3>
+      <div class="grid md:grid-cols-[1fr_auto_auto] gap-3 items-center">
+        <input id="lbInput" class="bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2" placeholder="Např.: LaysenCZECH, PlayerTwo, PlayerThree" />
+        <select id="lbMetric" class="bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2">
+          <option value="wr" selected>Winrate</option>
+          <option value="battles">Bitvy</option>
+          <option value="dmg">Celkový DMG</option>
+          <option value="avg">Prům. DMG</option>
+        </select>
+        <button id="lbBtn" class="btn btn-primary">Načíst žebříček</button>
+      </div>
+      <div id="lbResult" class="mt-4 hidden">
+        <div class="overflow-x-auto"><table class="w-full text-sm" id="lbTable"></table></div>
+        <div class="card p-4 mt-4"><h4 class="font-semibold mb-2">Graf žebříčku</h4><canvas id="lbChart" height="180"></canvas></div>
+      </div>
     </section>
   </main>
 
@@ -122,6 +175,14 @@
         <div class="p-4 grid md:grid-cols-2 gap-4">
           <div class="space-y-2">
             <img id="tankImage" class="w-full h-40 object-contain bg-slate-800 rounded-xl" />
+            <div class="grid grid-cols-2 gap-2 text-sm">
+              <div><div class="text-xs text-slate-400">Bitvy</div><div id="tdBattles" class="font-semibold">-</div></div>
+              <div><div class="text-xs text-slate-400">Výhry</div><div id="tdWins" class="font-semibold">-</div></div>
+              <div><div class="text-xs text-slate-400">Prohry</div><div id="tdLosses" class="font-semibold">-</div></div>
+              <div><div class="text-xs text-slate-400">Prům. DMG</div><div id="tdAvg" class="font-semibold">-</div></div>
+              <div><div class="text-xs text-slate-400">DMG celkem</div><div id="tdDmg" class="font-semibold">-</div></div>
+              <div><div class="text-xs text-slate-400">Zničené</div><div id="tdFrags" class="font-semibold">-</div></div>
+            </div>
           </div>
           <div class="space-y-2">
             <h5 class="font-semibold">Mini grafy</h5>
@@ -137,7 +198,14 @@
   // ====== CONFIG ======
   const WG_APP_ID = "028df7d564e4447b29c6c3ee894142cb";
   const REGIONS = { eu:'https://api.worldoftanks.eu', na:'https://api.worldoftanks.com', asia:'https://api.worldoftanks.asia', ru:'https://api.worldoftanks.ru' };
-  const COLORS = { win:'#10b981', loss:'#ef4444', dmg:'#60a5fa' };
+  const COLORS = { win:'#10b981', loss:'#ef4444', dmg:'#60a5fa', battles:'#94a3b8', A:'#38bdf8', B:'#f97316' };
+  const CLASS_META = {
+    heavyTank : { emoji:'🟥', color:'#ef4444', label:'heavyTank' },
+    mediumTank: { emoji:'🟩', color:'#22c55e', label:'mediumTank' },
+    lightTank : { emoji:'🟨', color:'#eab308', label:'lightTank' },
+    'AT-SPG'  : { emoji:'🟪', color:'#a855f7', label:'AT-SPG' },
+    SPG       : { emoji:'🟧', color:'#f59e0b', label:'SPG' },
+  };
 
   // ====== UTILS ======
   const $ = (s)=> document.querySelector(s);
@@ -152,34 +220,22 @@
   const loader = { on(){ $('#loader').classList.add('show'); }, off(){ $('#loader').classList.remove('show'); } };
 
   // Chart.js dark defaults
-  (function applyChartDark(){
-    if(!window.Chart) return;
-    Chart.defaults.color = '#e2e8f0';
-    Chart.defaults.borderColor = 'rgba(148,163,184,.25)';
-    Chart.defaults.font = { size: 13 };
-    if(Chart.defaults.plugins && Chart.defaults.plugins.legend && Chart.defaults.plugins.legend.labels){
-      Chart.defaults.plugins.legend.labels.color = '#e2e8f0';
-    }
-  })();
+  (function applyChartDark(){ if(!window.Chart)return; Chart.defaults.color='#e2e8f0'; Chart.defaults.borderColor='rgba(148,163,184,.25)'; Chart.defaults.font={size:13}; if(Chart.defaults.plugins && Chart.defaults.plugins.legend && Chart.defaults.plugins.legend.labels){ Chart.defaults.plugins.legend.labels.color='#e2e8f0'; } })();
 
   // ====== API ======
   async function getJSON(url){ const r=await fetch(url); if(!r.ok) throw new Error('HTTP '+r.status); const j=await r.json(); if(j.status!=='ok') throw new Error(j?.error?.message||'Chyba API'); return j.data; }
   async function searchAccount(nick, region){ const u=`${REGIONS[region]}/wot/account/list/?application_id=${WG_APP_ID}&search=${encodeURIComponent(nick)}&limit=1`; const d=await getJSON(u); return d?.[0]||null; }
   async function accountInfo(id, region){ const u=`${REGIONS[region]}/wot/account/info/?application_id=${WG_APP_ID}&account_id=${id}`; const d=await getJSON(u); return d?.[id]; }
   async function tanksStats(id, region){ const u=`${REGIONS[region]}/wot/tanks/stats/?application_id=${WG_APP_ID}&account_id=${id}`; const d=await getJSON(u); return d?.[id]||[]; }
-  async function vehiclesByIds(ids, region){
-    const out={}; const chunks=(a,n)=> a.length?[a.slice(0,n),...chunks(a.slice(n),n)]:[];
-    for(const part of chunks(ids, 90)){
-      const u=`${REGIONS[region]}/wot/encyclopedia/vehicles/?application_id=${WG_APP_ID}&tank_id=${part.join(',')}`;
-      Object.assign(out, await getJSON(u));
-    }
-    return out;
-  }
+  async function vehiclesByIds(ids, region){ const out={}; const chunks=(a,n)=> a.length?[a.slice(0,n),...chunks(a.slice(n),n)]:[]; for(const part of chunks(ids, 90)){ const u=`${REGIONS[region]}/wot/encyclopedia/vehicles/?application_id=${WG_APP_ID}&tank_id=${part.join(',')}`; Object.assign(out, await getJSON(u)); } return out; }
+  async function clanSearch(q, region){ const u=`${REGIONS[region]}/wot/clans/list/?application_id=${WG_APP_ID}&search=${encodeURIComponent(q)}&limit=1`; const d=await getJSON(u); return d?.[0]||null; }
+  async function clanInfo(id, region){ const u=`${REGIONS[region]}/wot/clans/info/?application_id=${WG_APP_ID}&clan_id=${id}`; const d=await getJSON(u); return d?.[id]; }
 
   // ====== EVENTS ======
   document.getElementById('toggleTheme').addEventListener('click', ()=> document.documentElement.classList.toggle('dark'));
   document.getElementById('openInfo').addEventListener('click', ()=> openModal('infoModal'));
 
+  // hledání hráče
   document.getElementById('searchBtn').addEventListener('click', async ()=>{
     const nick = $('#playerInput').value.trim(); const region=$('#region').value; if(!nick) return;
     $('#errorBox').classList.add('hidden'); loader.on();
@@ -194,9 +250,12 @@
   document.getElementById('playerInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('searchBtn').click(); }});
   document.addEventListener('DOMContentLoaded', ()=>{ const p=new URL(location.href).searchParams.get('player'); if(p){ $('#playerInput').value=p; document.getElementById('searchBtn').click(); } else { $('#playerInput').focus(); } lucide.createIcons(); });
 
-  // ====== RENDER ======
-  let CHARTS={};
-  function upsert(ref, ctx, cfg){ if(CHARTS[ref]){ CHARTS[ref].data=cfg.data; CHARTS[ref].options=cfg.options||{}; CHARTS[ref].update(); } else { CHARTS[ref]=new Chart(ctx, cfg); } }
+  // ====== RENDER HELPERS ======
+  let CHARTS={}; function upsert(ref, ctx, cfg){ if(CHARTS[ref]){ CHARTS[ref].data=cfg.data; CHARTS[ref].options=cfg.options||{}; CHARTS[ref].update(); } else { CHARTS[ref]=new Chart(ctx, cfg); } }
+
+  function enrichGarage(tstats, vmap){
+    return tstats.map(t=>{ const v=vmap?.[t.tank_id]||{}; const a=t.all||{}; const b=a.battles||0; const w=a.wins||0; const d=a.damage_dealt||0; const avg=b?Math.round(d/b):0; const fr=a.frags||0; const meta=CLASS_META[v.type]||{}; return { id:t.tank_id, name:v.name||('Tank '+t.tank_id), tier:v.tier||'?', img:v?.images?.big_icon||v?.images?.small_icon||'', cls:v.type||'', nation:v.nation||'', clsEmoji:meta.emoji||'', clsColor:meta.color||'#9aa1af', battles:b, wins:w, losses:Math.max(0,b-w-(a.draws||0)), dmg:d, avg, frags:fr }; }).sort((A,B)=>B.battles-A.battles);
+  }
 
   function renderPlayer(acc, info, tstats, vmap, region){
     const s = info?.statistics?.all||{}; const battles=s.battles||0; const wins=s.wins||0; const draws=s.draws||0; const losses=Math.max(0,battles-wins-draws); const dmg=s.damage_dealt||0; const avg=battles?Math.round(dmg/battles):0; const wr=battles?wins/battles:0;
@@ -207,10 +266,17 @@
     upsert('barWinLoss', $('#barWinLoss'), { type:'bar', data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Počet', data:[wins,losses], backgroundColor:[COLORS.win,COLORS.loss] }] } });
     upsert('pieWinLoss', $('#pieWinLoss'), { type:'pie', data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Podíl', data:[wins,losses], backgroundColor:[COLORS.win,COLORS.loss] }] } });
 
-    const garage = tstats.map(t=>{ const v=vmap?.[t.tank_id]||{}; const a=t.all||{}; const b=a.battles||0; const w=a.wins||0; const d=a.damage_dealt||0; const avg=b?Math.round(d/b):0; const fr=a.frags||0; return { id:t.tank_id, name:v.name||('Tank '+t.tank_id), tier:v.tier||'?', img:v?.images?.big_icon||v?.images?.small_icon||'', cls:v.type||'', nation:v.nation||'', battles:b, wins:w, losses:Math.max(0,b-w-(a.draws||0)), dmg:d, avg, frags:fr }; }).sort((A,B)=>B.battles-A.battles);
+    const garage = enrichGarage(tstats, vmap);
+    const topD = [...garage].sort((A,B)=>B.dmg-A.dmg).slice(0,10);
+    upsert('barTopDmg', $('#barTopDmg'), { type:'bar', data:{ labels: topD.map(g=> `${g.clsEmoji} ${g.name}`), datasets:[{ label:'Celkový DMG', data: topD.map(g=>g.dmg), backgroundColor: topD.map(()=>COLORS.dmg) }] }, options:{ indexAxis:'y' } });
 
-    const top = [...garage].sort((A,B)=>B.dmg-A.dmg).slice(0,10);
-    upsert('barTopDmg', $('#barTopDmg'), { type:'bar', data:{ labels: top.map(g=>g.name), datasets:[{ label:'Celkový DMG', data: top.map(g=>g.dmg), backgroundColor: top.map(()=>COLORS.dmg) }] }, options:{ indexAxis:'y' } });
+    // Extra: rozložení podle tříd + top podle bitev
+    const byClass = {}; garage.forEach(g=>{ byClass[g.cls] = (byClass[g.cls]||0) + 1; });
+    const classKeys = Object.keys(byClass);
+    upsert('pieClasses', $('#pieClasses'), { type:'doughnut', data:{ labels: classKeys.map(k=> `${CLASS_META[k]?.emoji||''} ${CLASS_META[k]?.label||k}`), datasets:[{ data: classKeys.map(k=> byClass[k]), backgroundColor: classKeys.map(k=> CLASS_META[k]?.color||'#94a3b8') }] } });
+
+    const topBatt = [...garage].sort((A,B)=>B.battles-A.battles).slice(0,10);
+    upsert('barTopBattles', $('#barTopBattles'), { type:'bar', data:{ labels: topBatt.map(g=> `${g.clsEmoji} ${g.name}`), datasets:[{ label:'Bitvy', data: topBatt.map(g=>g.battles), backgroundColor: topBatt.map(()=>COLORS.battles) }] }, options:{ indexAxis:'y' } });
 
     renderGarage(garage);
   }
@@ -222,7 +288,8 @@
       const img=$c('img','w-full h-36 object-contain bg-slate-800'); img.src=g.img; img.alt=g.name; card.appendChild(img);
       const box=$c('div','p-4 space-y-2');
       const head=$c('div','flex items-center justify-between');
-      head.innerHTML = `<div><div class='font-semibold'>${g.name}</div><div class='text-xs text-slate-400'>Tier ${g.tier} • ${g.nation?.toUpperCase()} • ${g.cls}</div></div><div class='text-right text-sm'>Bitvy: <b>${fmt(g.battles)}</b><div class='text-xs text-slate-400'>Výhry: ${fmt(g.wins)} • Prohry: ${fmt(g.losses)}</div></div>`;
+      const badge = `<span class="badge" style="color:${g.clsColor};border-color:${g.clsColor}">${g.clsEmoji} ${g.cls||''}</span>`;
+      head.innerHTML = `<div><div class='font-semibold'>${g.name}</div><div class='text-xs text-slate-400'>Tier ${g.tier} • ${g.nation?.toUpperCase()} • ${badge}</div></div><div class='text-right text-sm'>Bitvy: <b>${fmt(g.battles)}</b><div class='text-xs text-slate-400'>Výhry: ${fmt(g.wins)} • Prohry: ${fmt(g.losses)}</div></div>`;
       const grid2=$c('div','grid grid-cols-2 gap-3 text-sm');
       grid2.innerHTML = `<div><div class='text-xs text-slate-400'>DMG celkem</div><div class='font-semibold'>${fmt(g.dmg)}</div></div><div><div class='text-xs text-slate-400'>Prům. DMG</div><div class='font-semibold'>${fmt(g.avg)}</div></div><div><div class='text-xs text-slate-400'>Zničené</div><div class='font-semibold'>${fmt(g.frags)}</div></div><div><div class='text-xs text-slate-400'>Winrate</div><div class='font-semibold'>${g.battles?pct(g.wins/g.battles):'-'}</div></div>`;
       const btn=$c('button','btn btn-emerald w-full'); btn.textContent='Detail tanku'; btn.onclick=()=> openTank(g);
@@ -232,13 +299,34 @@
 
   let CH_TANK_PIE=null, CH_TANK_BAR=null;
   function openTank(g){
-    $('#tankTitle').textContent=g.name; $('#tankMeta').textContent=`Tier ${g.tier} • ${g.nation?.toUpperCase()} • ${g.cls}`; $('#tankImage').src=g.img;
+    $('#tankTitle').textContent=g.name; $('#tankMeta').innerHTML=`Tier ${g.tier} • ${g.nation?.toUpperCase()} • <span class='badge' style='color:${g.clsColor};border-color:${g.clsColor}'>${g.clsEmoji} ${g.cls||''}</span>`; $('#tankImage').src=g.img;
+    $('#tdBattles').textContent=fmt(g.battles); $('#tdWins').textContent=fmt(g.wins); $('#tdLosses').textContent=fmt(g.losses); $('#tdAvg').textContent=fmt(g.avg); $('#tdDmg').textContent=fmt(g.dmg); $('#tdFrags').textContent=fmt(g.frags);
     if(CH_TANK_PIE){ CH_TANK_PIE.destroy(); CH_TANK_PIE=null; }
     if(CH_TANK_BAR){ CH_TANK_BAR.destroy(); CH_TANK_BAR=null; }
     CH_TANK_PIE = new Chart($('#tankPie'), { type:'doughnut', data:{ labels:['Výhry','Prohry'], datasets:[{ data:[g.wins,g.losses], backgroundColor:[COLORS.win,COLORS.loss] }] } });
     CH_TANK_BAR = new Chart($('#tankBar'), { type:'bar', data:{ labels:['DMG celkem','Prům. DMG','Zničené'], datasets:[{ data:[g.dmg,g.avg,g.frags], label:'Hodnota' }] }, options:{ indexAxis:'y' } });
     openModal('tankModal');
   }
+
+  // ====== COMPARE ======
+  document.getElementById('cmpBtn').addEventListener('click', async ()=>{
+    const a=$('#cmpA').value.trim(), b=$('#cmpB').value.trim(), region=$('#region').value; if(!a||!b) return;
+    loader.on();
+    try{ const [accA,accB]=await Promise.all([searchAccount(a,region), searchAccount(b,region)]); if(!accA||!accB) throw new Error('Hráč A nebo B nenalezen'); const [infoA,infoB]=await Promise.all([accountInfo(accA.account_id,region), accountInfo(accB.account_id,region)]); renderCompare({acc:accA,info:infoA},{acc:accB,info:infoB}); }catch(e){ alert(e.message||String(e)); } finally{ loader.off(); }
+  });
+  function renderCompare(A,B){ const sA=A.info?.statistics?.all||{}; const sB=B.info?.statistics?.all||{}; const vA={ battles:sA.battles||0, wins:sA.wins||0, losses:(sA.battles||0)-(sA.wins||0)-(sA.draws||0), dmg:sA.damage_dealt||0 }; const vB={ battles:sB.battles||0, wins:sB.wins||0, losses:(sB.battles||0)-(sB.wins||0)-(sB.draws||0), dmg:sB.damage_dealt||0 }; $('#cmpResult').classList.remove('hidden'); $('#cmpNameA').textContent='🅰️ '+A.acc.nickname; $('#cmpNameB').textContent='🅱️ '+B.acc.nickname; $('#cmpKpiA').innerHTML=`<div><div class='text-xs text-slate-400'>Bitvy</div><div class='font-semibold'>${fmt(vA.battles)}</div></div><div><div class='text-xs text-slate-400'>Winrate</div><div class='font-semibold'>${vA.battles?pct(vA.wins/vA.battles):'-'}</div></div><div><div class='text-xs text-slate-400'>Výhry</div><div class='font-semibold'>${fmt(vA.wins)}</div></div><div><div class='text-xs text-slate-400'>DMG</div><div class='font-semibold'>${fmt(vA.dmg)}</div></div>`; $('#cmpKpiB').innerHTML=`<div><div class='text-xs text-slate-400'>Bitvy</div><div class='font-semibold'>${fmt(vB.battles)}</div></div><div><div class='text-xs text-slate-400'>Winrate</div><div class='font-semibold'>${vB.battles?pct(vB.wins/vB.battles):'-'}</div></div><div><div class='text-xs text-slate-400'>Výhry</div><div class='font-semibold'>${fmt(vB.wins)}</div></div><div><div class='text-xs text-slate-400'>DMG</div><div class='font-semibold'>${fmt(vB.dmg)}</div></div>`; upsert('cmp', $('#cmpChart'), { type:'bar', data:{ labels:['Bitvy','Výhry','Prohry','Celkový DMG'], datasets:[{ label:A.acc.nickname, data:[vA.battles,vA.wins,vA.losses,vA.dmg], backgroundColor:COLORS.A },{ label:B.acc.nickname, data:[vB.battles,vB.wins,vB.losses,vB.dmg], backgroundColor:COLORS.B }] } }); }
+
+  // ====== CLANS ======
+  document.getElementById('clanBtn').addEventListener('click', async ()=>{
+    const q=$('#clanInput').value.trim(), region=$('#region').value; if(!q) return; loader.on(); try{ const cl=await clanSearch(q,region); if(!cl) throw new Error('Klan nenalezen'); const info=await clanInfo(cl.clan_id,region); renderClan(info,region); }catch(e){ alert(e.message||String(e)); } finally{ loader.off(); }
+  });
+  async function renderClan(c, region){ const box=$('#clanResult'); box.classList.remove('hidden'); box.innerHTML=''; const head=$c('div','flex items-center justify-between'); head.innerHTML=`<div><div class='text-xl font-semibold'>🏰 [${c.tag}] ${c.name}</div><div class='text-slate-400 text-sm'>Založen: ${new Date(c.created_at*1000).toLocaleDateString('cs-CZ')} • Členů: ${c.members_count}</div></div>`; box.appendChild(head); const tbl=$c('div','overflow-x-auto mt-3'); const table=$c('table','w-full text-sm'); table.innerHTML=`<thead class='text-left text-slate-400'><tr><th class='py-2 pr-4'>Hráč</th><th class='py-2 pr-4'>Role</th><th class='py-2 pr-4'>Přidán</th><th class='py-2'>Winrate (vzorek)</th></tr></thead><tbody></tbody>`; tbl.appendChild(table); box.appendChild(tbl); const tbody=table.querySelector('tbody'); const sample=c.members.slice(0,20); let wrSum=0, wrCnt=0; for(const m of sample){ try{ const info=await accountInfo(m.account_id,region); const s=info?.statistics?.all||{}; const wr=s.battles? s.wins/s.battles: 0; if(s.battles){ wrSum+=wr; wrCnt++; } const tr=$c('tr','border-t border-white/10'); tr.innerHTML=`<td class='py-2 pr-4'>${info.nickname||m.account_name}</td><td class='py-2 pr-4'>${m.role_i18n||m.role}</td><td class='py-2 pr-4'>${new Date(m.joined_at*1000).toLocaleDateString('cs-CZ')}</td><td class='py-2'>${s.battles?pct(wr):'—'}</td>`; tbody.appendChild(tr); }catch{} } const avg=wrCnt? pct(wrSum/wrCnt):'—'; const note=$c('div','mt-2 text-slate-300'); note.textContent=`📊 Průměrný winrate (vzorek ${wrCnt} hráčů z 20): ${avg}`; box.appendChild(note); }
+
+  // ====== LEADERBOARD ======
+  document.getElementById('lbBtn').addEventListener('click', async ()=>{
+    const names=$('#lbInput').value.split(',').map(s=>s.trim()).filter(Boolean); const metric=$('#lbMetric').value; const region=$('#region').value; if(!names.length) return; loader.on(); try{ const accs=await Promise.all(names.map(n=>searchAccount(n,region))); const valid=accs.filter(Boolean); const infos=await Promise.all(valid.map(a=>accountInfo(a.account_id, region))); const rows=valid.map((a,i)=>{ const s=infos[i]?.statistics?.all||{}; const wr=s.battles? s.wins/s.battles:0; const avg=s.battles? Math.round((s.damage_dealt||0)/s.battles):0; return { nick:a.nickname, battles:s.battles||0, wins:s.wins||0, dmg:s.damage_dealt||0, wr, avg }; }); const sorted=rows.sort((A,B)=> metric==='wr'? (B.wr-A.wr) : metric==='battles'? (B.battles-A.battles) : metric==='dmg'? (B.dmg-A.dmg) : (B.avg-A.avg)); renderLeaderboard(sorted, metric); }catch(e){ alert(e.message||String(e)); } finally{ loader.off(); }
+  });
+  let CH_LB=null; function renderLeaderboard(rows, metric){ $('#lbResult').classList.remove('hidden'); const tbl=$('#lbTable'); tbl.innerHTML=`<thead class='text-left text-slate-400'><tr><th class='py-2 pr-4'>#</th><th class='py-2 pr-4'>Hráč</th><th class='py-2 pr-4'>Bitvy</th><th class='py-2 pr-4'>Výhry</th><th class='py-2 pr-4'>Winrate</th><th class='py-2 pr-4'>Celkový DMG</th><th class='py-2'>Prům. DMG</th></tr></thead><tbody></tbody>`; const tbody=tbl.querySelector('tbody'); rows.forEach((r,i)=>{ const tr=document.createElement('tr'); tr.className='border-t border-white/10'; tr.innerHTML=`<td class='py-2 pr-4'>${i+1}</td><td class='py-2 pr-4'>${r.nick}</td><td class='py-2 pr-4'>${fmt(r.battles)}</td><td class='py-2 pr-4'>${fmt(r.wins)}</td><td class='py-2 pr-4'>${r.battles?pct(r.wr):'—'}</td><td class='py-2 pr-4'>${fmt(r.dmg)}</td><td class='py-2'>${fmt(r.avg)}</td>`; tbody.appendChild(tr); }); const labels=rows.map(r=>r.nick); const vals=rows.map(r=> metric==='wr'? (r.wr*100).toFixed(2) : metric==='battles'? r.battles : metric==='dmg'? r.dmg : r.avg); const labelName=metric==='wr'? 'Winrate %' : metric==='battles'? 'Bitvy' : metric==='dmg'? 'DMG' : 'Prům. DMG'; if(CH_LB){ CH_LB.destroy(); CH_LB=null; } CH_LB=new Chart($('#lbChart'), { type:'bar', data:{ labels, datasets:[{ label:labelName, data:vals }] }, options:{ indexAxis:'y' } }); }
 </script>
 </body>
 </html>
