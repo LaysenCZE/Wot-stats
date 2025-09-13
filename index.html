@@ -2,25 +2,200 @@
 <html lang="cs" class="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WoT Stats – Dark Epic</title>
-  <!-- Tailwind CSS -->
+
+  <!-- Tailwind (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- React + ReactDOM -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <!-- Recharts -->
-  <script src="https://cdn.jsdelivr.net/npm/recharts/umd/Recharts.min.js"></script>
-  <!-- Lucide icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js (UMD) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+  <!-- Základní meta / reset -->
+  <meta name="color-scheme" content="dark">
+  <style>
+    /* Bezpečné minimum, kdyby CDN Tailwind vypadl */
+    body{background:#0a0a0a;color:#e5e5e5}
+    .container{max-width:1200px;margin:0 auto}
+    .backdrop{backdrop-filter:saturate(120%) blur(8px)}
+    .modal-open{overflow:hidden}
+  </style>
 </head>
-<body class="bg-neutral-950 text-neutral-100">
-  <div id="root"></div>
+<body class="bg-neutral-950 text-neutral-100 selection:bg-emerald-600/40">
 
-  <script type="text/javascript">
-    const { useState, useMemo } = React;
-    const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } = Recharts;
+  <!-- Top bar -->
+  <header class="sticky top-0 z-30 backdrop bg-neutral-900/80 border-b border-neutral-800 backdrop-blur">
+    <div class="container px-4 py-3 flex items-center gap-3">
+      <div class="flex items-center gap-3">
+        <div class="size-9 rounded-xl bg-neutral-800 grid place-items-center">
+          <!-- jednoduchá ikona tachometru -->
+          <svg class="size-5 text-neutral-200" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M12 3a9 9 0 1 0 9 9" stroke-width="1.5"/>
+            <path d="M12 7v5l3 3" stroke-width="1.5" />
+          </svg>
+        </div>
+        <h1 class="text-lg sm:text-xl font-semibold tracking-tight">WoT Stats</h1>
+        <span class="text-xs px-2 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-200">Beta</span>
+      </div>
 
+      <div class="ms-auto flex items-center gap-2">
+        <input id="playerInput" placeholder="Zadej nickname hráče…"
+               class="hidden md:block w-64 px-3 py-2 rounded-lg bg-neutral-800 border border-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400/40">
+        <button id="searchBtn"
+                class="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-medium">
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="11" cy="11" r="7" stroke-width="1.5"/><path d="M20 20l-3.5-3.5" stroke-width="1.5"/>
+          </svg>
+          Hledat hráče
+        </button>
+        <button id="infoBtn"
+                class="px-3 py-2 rounded-lg border border-neutral-700 text-neutral-200 bg-neutral-900 hover:bg-neutral-800 text-sm font-medium">
+          INFORMACE
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container px-4">
+
+    <!-- Přehled + Tank -->
+    <section class="pt-8 grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+      <div class="col-span-1 lg:col-span-2 rounded-2xl bg-neutral-900/60 border border-neutral-800">
+        <div class="p-5 border-b border-neutral-800">
+          <h2 class="flex items-center gap-2 text-base font-semibold">
+            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 9l7-7M2 22l7-7" stroke-width="1.5"/></svg>
+            Přehled hráče
+          </h2>
+        </div>
+        <div class="p-5">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
+              <div class="flex items-center gap-2 text-neutral-400 text-xs uppercase tracking-wider">🎯 <span>Průměr DMG</span></div>
+              <div id="avgDmg" class="mt-2 text-2xl font-semibold text-neutral-100">—</div>
+            </div>
+            <div class="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
+              <div class="flex items-center gap-2 text-neutral-400 text-xs uppercase tracking-wider">🏆 <span>Výhry</span></div>
+              <div id="wins" class="mt-2 text-2xl font-semibold text-neutral-100">—</div>
+            </div>
+            <div class="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
+              <div class="flex items-center gap-2 text-neutral-400 text-xs uppercase tracking-wider">❌ <span>Prohry</span></div>
+              <div id="losses" class="mt-2 text-2xl font-semibold text-neutral-100">—</div>
+            </div>
+            <div class="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
+              <div class="flex items-center gap-2 text-neutral-400 text-xs uppercase tracking-wider">📊 <span>Celkové hraní</span></div>
+              <div id="games" class="mt-2 text-2xl font-semibold text-neutral-100">—</div>
+            </div>
+          </div>
+
+          <div class="my-6 h-px bg-neutral-800"></div>
+
+          <div class="aspect-[21/9] rounded-2xl bg-gradient-to-tr from-neutral-800/80 to-neutral-700/40 grid place-items-center">
+            <!-- Tank SVG -->
+            <svg viewBox="0 0 512 256" class="w-[88%] max-w-4xl text-neutral-300" fill="currentColor" aria-hidden>
+              <g opacity="0.15"><rect x="0" y="200" width="512" height="20" rx="10" /></g>
+              <path d="M64 180h320c28 0 44-24 44-44v-6l28-8c10-3 16-14 13-24-3-10-14-16-24-13l-17 5V73c0-11-9-20-20-20h-58c-5 0-9 4-9 9v26H216l-33-18c-5-3-12-1-15 4l-13 24H64c-18 0-32 14-32 32v20c0 18 14 32 32 32z"/>
+              <circle cx="124" cy="180" r="24" /><circle cx="204" cy="180" r="24" />
+              <circle cx="284" cy="180" r="24" /><circle cx="364" cy="180" r="24" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl bg-neutral-900/60 border border-neutral-800 p-5">
+        <h3 class="flex items-center gap-2 text-base font-semibold">
+          <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18M3 6h18M3 18h18" stroke-width="1.5"/></svg>
+          Souhrn
+        </h3>
+
+        <div class="space-y-3 text-sm text-neutral-300 mt-4">
+          <div class="flex items-center justify-between">
+            <span>Celkový průměr DMG</span><span id="avgDmg2" class="font-semibold text-neutral-100">—</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span>Zničené tanky</span><span id="destroyed" class="font-semibold text-neutral-100">—</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span>Celkový počet bitev</span><span id="battles" class="font-semibold text-neutral-100">—</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span>Winrate</span><span id="winrate" class="font-semibold text-emerald-400">—</span>
+          </div>
+        </div>
+
+        <div class="my-4 h-px bg-neutral-800"></div>
+
+        <div class="flex gap-2">
+          <input id="playerInput2" placeholder="Zadej nickname hráče…"
+                 class="flex-1 px-3 py-2 rounded-lg bg-neutral-800 border border-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400/40">
+          <button id="searchBtn2" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-medium">
+            Hledat hráče
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Graf -->
+    <section class="py-8">
+      <div class="rounded-2xl bg-neutral-900/60 border border-neutral-800">
+        <div class="p-5 border-b border-neutral-800">
+          <h3 class="text-base font-semibold">Graf výher a proher</h3>
+        </div>
+        <div class="p-5">
+          <div class="h-80">
+            <canvas id="winlossChart" class="w-full h-full"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="container px-4 pb-10 text-sm text-neutral-400">
+    <div class="mb-6 h-px bg-neutral-800"></div>
+    <div class="flex flex-col md:flex-row items-center justify-between gap-3">
+      <p>© <span id="year"></span> WoT Stats (neoficiální fan projekt)</p>
+      <div class="flex items-center gap-2">
+        <span class="px-2 py-1 rounded bg-neutral-800 border border-neutral-700">Tmavý vzhled</span>
+        <span class="px-2 py-1 rounded bg-neutral-800 border border-neutral-700">Epic UI</span>
+        <span class="px-2 py-1 rounded bg-neutral-800 border border-neutral-700">Chart.js</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- INFORMACE modal -->
+  <div id="infoModal" class="hidden fixed inset-0 z-50 items-center justify-center">
+    <div class="absolute inset-0 bg-black/80"></div>
+    <div class="relative bg-neutral-900 text-neutral-100 border border-neutral-800 rounded-2xl max-w-xl w-[92%] mx-auto p-6">
+      <h4 class="text-lg font-semibold mb-1">Novinky &amp; Changelog</h4>
+      <p class="text-neutral-400 mb-4">Přehled posledních změn a informací k webu.</p>
+
+      <ul class="space-y-4 text-sm">
+        <li>
+          <div class="font-medium">13. 09. 2025 – Velký tmavý redesign</div>
+          <p class="text-neutral-400">Přidán dashboard, graf výher/proher, souhrnné metriky a vyhledávání hráče.</p>
+        </li>
+        <li>
+          <div class="font-medium">10. 09. 2025 – Modal INFORMACE</div>
+          <p class="text-neutral-400">Nová sekce novinek (changelog) v modálním okně.</p>
+        </li>
+        <li>
+          <div class="font-medium">05. 09. 2025 – Základní statistiky</div>
+          <p class="text-neutral-400">Průměr DMG, zničené tanky a celkové hraní.</p>
+        </li>
+      </ul>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <button id="closeInfo"
+                class="px-3 py-2 rounded-lg border border-neutral-700 text-neutral-200 bg-neutral-900 hover:bg-neutral-800 text-sm font-medium">
+          Zavřít
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App skript -->
+  <script>
+    // Demo data
     const demoMatches = [
       { month: "Leden", vyhry: 42, prohry: 28 },
       { month: "Únor", vyhry: 38, prohry: 31 },
@@ -33,111 +208,84 @@
 
     const demoStats = { avgDmg: 2175, destroyed: 1389, battles: 3250, winrate: 57.2 };
 
-    function StatChip({ icon, label, value }) {
-      return (
-        React.createElement("div", { className: "rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4" },
-          React.createElement("div", { className: "flex items-center gap-2 text-neutral-400 text-xs uppercase tracking-wider" },
-            icon,
-            React.createElement("span", null, label)
-          ),
-          React.createElement("div", { className: "mt-2 text-2xl font-semibold text-neutral-100" }, value)
-        )
-      );
+    // Vyplnění metrik
+    const winsTotal = demoMatches.reduce((a, m) => a + m.vyhry, 0);
+    const lossesTotal = demoMatches.reduce((a, m) => a + m.prohry, 0);
+    const totalGames = winsTotal + lossesTotal;
+
+    document.getElementById("avgDmg").textContent  = demoStats.avgDmg.toLocaleString("cs-CZ");
+    document.getElementById("avgDmg2").textContent = demoStats.avgDmg.toLocaleString("cs-CZ") + " dmg";
+    document.getElementById("destroyed").textContent = demoStats.destroyed.toLocaleString("cs-CZ");
+    document.getElementById("battles").textContent   = demoStats.battles.toLocaleString("cs-CZ");
+    document.getElementById("winrate").textContent   = demoStats.winrate + "%";
+    document.getElementById("wins").textContent      = winsTotal.toLocaleString("cs-CZ");
+    document.getElementById("losses").textContent    = lossesTotal.toLocaleString("cs-CZ");
+    document.getElementById("games").textContent     = totalGames.toLocaleString("cs-CZ");
+    document.getElementById("year").textContent      = new Date().getFullYear();
+
+    // Hledání hráče
+    function searchPlayer() {
+      const v1 = document.getElementById("playerInput").value.trim();
+      const v2 = document.getElementById("playerInput2").value.trim();
+      const q = v1 || v2;
+      alert(q ? ("Hledám hráče: " + q) : "Zadej nickname hráče");
     }
+    document.getElementById("searchBtn")?.addEventListener("click", searchPlayer);
+    document.getElementById("searchBtn2")?.addEventListener("click", searchPlayer);
 
-    function TankSVG() {
-      return (
-        React.createElement("svg", { viewBox: "0 0 512 256", fill: "currentColor", className: "w-[88%] max-w-4xl text-neutral-300" },
-          React.createElement("g", { opacity: "0.15" }, React.createElement("rect", { x: "0", y: "200", width: "512", height: "20", rx: "10" })),
-          React.createElement("path", { d: "M64 180h320c28 0 44-24 44-44v-6l28-8c10-3 16-14 13-24-3-10-14-16-24-13l-17 5V73c0-11-9-20-20-20h-58c-5 0-9 4-9 9v26H216l-33-18c-5-3-12-1-15 4l-13 24H64c-18 0-32 14-32 32v20c0 18 14 32 32 32z" }),
-          React.createElement("circle", { cx: "124", cy: "180", r: "24" }),
-          React.createElement("circle", { cx: "204", cy: "180", r: "24" }),
-          React.createElement("circle", { cx: "284", cy: "180", r: "24" }),
-          React.createElement("circle", { cx: "364", cy: "180", r: "24" }),
-        )
-      );
-    }
-
-    function WotStatsDarkEpic() {
-      const [playerQuery, setPlayerQuery] = useState("");
-      const [showInfo, setShowInfo] = useState(false);
-
-      const lossesTotal = useMemo(() => demoMatches.reduce((a, m) => a + m.prohry, 0), []);
-      const winsTotal = useMemo(() => demoMatches.reduce((a, m) => a + m.vyhry, 0), []);
-      const totalGames = winsTotal + lossesTotal;
-
-      function onSearchPlayer() {
-        alert("Hledám hráče: " + playerQuery);
+    // Info modal
+    const modal = document.getElementById("infoModal");
+    document.getElementById("infoBtn").addEventListener("click", () => {
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+      document.documentElement.classList.add("modal-open");
+    });
+    document.getElementById("closeInfo").addEventListener("click", () => {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+      document.documentElement.classList.remove("modal-open");
+    });
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+        document.documentElement.classList.remove("modal-open");
       }
+    });
 
-      return (
-        React.createElement("div", { className: "min-h-screen w-full" },
-          // Header
-          React.createElement("header", { className: "bg-neutral-900 p-4 flex items-center justify-between" },
-            React.createElement("h1", { className: "text-xl font-bold" }, "WoT Stats"),
-            React.createElement("div", { className: "flex gap-2" },
-              React.createElement("input", {
-                value: playerQuery,
-                onChange: (e) => setPlayerQuery(e.target.value),
-                placeholder: "Zadej nickname hráče…",
-                className: "px-3 py-1 rounded bg-neutral-800 border border-neutral-700 text-sm"
-              }),
-              React.createElement("button", { onClick: onSearchPlayer, className: "px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-sm" }, "Hledat hráče"),
-              React.createElement("button", { onClick: () => setShowInfo(true), className: "px-3 py-1 rounded bg-neutral-700 text-sm" }, "INFORMACE")
-            )
-          ),
-
-          // Stats
-          React.createElement("section", { className: "p-6 grid grid-cols-2 md:grid-cols-4 gap-4" },
-            React.createElement(StatChip, { icon: "🎯", label: "Průměr DMG", value: demoStats.avgDmg.toLocaleString("cs-CZ") }),
-            React.createElement(StatChip, { icon: "🏆", label: "Výhry", value: winsTotal }),
-            React.createElement(StatChip, { icon: "❌", label: "Prohry", value: lossesTotal }),
-            React.createElement(StatChip, { icon: "📊", label: "Celkové hraní", value: totalGames })
-          ),
-
-          // Tank
-          React.createElement("div", { className: "flex justify-center p-6" }, React.createElement(TankSVG)),
-
-          // Chart
-          React.createElement("section", { className: "p-6" },
-            React.createElement("h2", { className: "mb-4 text-lg font-semibold" }, "Graf výher a proher"),
-            React.createElement("div", { className: "h-80" },
-              React.createElement(ResponsiveContainer, { width: "100%", height: "100%" },
-                React.createElement(BarChart, { data: demoMatches },
-                  React.createElement(CartesianGrid, { strokeDasharray: "4 4", stroke: "#27272a" }),
-                  React.createElement(XAxis, { dataKey: "month", stroke: "#a1a1aa" }),
-                  React.createElement(YAxis, { stroke: "#a1a1aa" }),
-                  React.createElement(Tooltip, { contentStyle: { background: "#0a0a0a", border: "1px solid #27272a", color: "#fafafa" } }),
-                  React.createElement(Legend),
-                  React.createElement(Bar, { dataKey: "vyhry", fill: "#10b981" }),
-                  React.createElement(Bar, { dataKey: "prohry", fill: "#ef4444" })
-                )
-              )
-            )
-          ),
-
-          // Footer
-          React.createElement("footer", { className: "p-6 text-sm text-neutral-400 text-center" },
-            "© " + new Date().getFullYear() + " WoT Stats (neoficiální fan projekt)"
-          ),
-
-          // Info Modal
-          showInfo && React.createElement("div", { className: "fixed inset-0 bg-black/80 flex items-center justify-center" },
-            React.createElement("div", { className: "bg-neutral-900 p-6 rounded-xl max-w-lg w-full" },
-              React.createElement("h3", { className: "font-bold mb-2" }, "Novinky & Changelog"),
-              React.createElement("ul", { className: "space-y-2 text-sm text-neutral-300" },
-                React.createElement("li", null, "13. 09. 2025 – Velký tmavý redesign"),
-                React.createElement("li", null, "10. 09. 2025 – Modal INFORMACE"),
-                React.createElement("li", null, "05. 09. 2025 – Základní statistiky")
-              ),
-              React.createElement("button", { onClick: () => setShowInfo(false), className: "mt-4 px-3 py-1 rounded bg-neutral-700 hover:bg-neutral-600" }, "Zavřít")
-            )
-          )
-        )
-      );
+    // Chart.js – výhry/prohry
+    const ctx = document.getElementById("winlossChart");
+    // Bezpečnost: pokud plátno neexistuje, nic nedělej
+    if (ctx && window.Chart) {
+      new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: demoMatches.map(m => m.month),
+          datasets: [
+            { label: "Výhry", data: demoMatches.map(m => m.vyhry) },
+            { label: "Prohry", data: demoMatches.map(m => m.prohry) }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: "#27272a" }, ticks: { color: "#a1a1aa" } },
+            y: { grid: { color: "#27272a" }, ticks: { color: "#a1a1aa" } },
+          },
+          plugins: {
+            legend: { labels: { color: "#e4e4e7" } },
+            tooltip: {
+              backgroundColor: "#0a0a0a",
+              borderColor: "#27272a",
+              borderWidth: 1,
+              titleColor: "#fafafa",
+              bodyColor: "#fafafa",
+            }
+          }
+        }
+      });
     }
-
-    ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(WotStatsDarkEpic));
   </script>
 </body>
 </html>
