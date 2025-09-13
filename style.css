@@ -62,7 +62,7 @@ body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* --- Tank detail pills / badge --- */
+/* Tank detail pills / badge */
 .pill {
   display:inline-flex; align-items:center; gap:.5rem;
   background: rgba(255,255,255,.06);
