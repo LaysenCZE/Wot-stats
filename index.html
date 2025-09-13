@@ -2,8 +2,8 @@
 <html lang="cs" class="dark">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WoT Stats – stable v5</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>WoT Stats – stable v5 (mobile)</title>
 
   <!-- Fonts & libs -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,7 +14,6 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-  <!-- Your styles -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="min-h-screen bg-gradient-to-b from-slate-900 via-slate-950 to-black text-slate-100">
@@ -54,68 +53,41 @@
         </div>
 
         <p class="text-slate-300 mb-4">
-          Tahle stránka je neoficiální přehled a vizualizace statistik <b>World of Tanks</b> nad veřejným WG API.
-          Funguje čistě v prohlížeči, nic nikam neukládá (kromě volitelného lokálního snapshotu pro „Poslední bitvy“).
+          Neoficiální přehled a vizualizace statistik <b>World of Tanks</b> nad veřejným WG API.
+          Vše běží v prohlížeči, nic se neukládá (mimo volitelného lokálního snapshotu pro „Poslední bitvy“).
         </p>
 
         <div class="grid md:grid-cols-2 gap-4">
           <div>
             <h4 class="font-semibold mb-2">Co umí</h4>
             <ul class="list-disc ml-6 space-y-1 text-slate-300">
-              <li><b>Hledání hráče</b> – KPI (bitvy, výhry, WR, DMG…)</li>
-              <li><b>Garáž</b> – karty tanků s tierem, třídou, národem a statistikami</li>
-              <li><b>Grafy</b> – Výhry vs Prohry, Top 10 DMG, rozložení podle tříd, Top 10 podle počtu bitev</li>
-              <li><b>Detail tanku</b> – mini grafy (podíl výher/proher, DMG/AVG/fragy)</li>
-              <li><b>Porovnání hráčů</b> – KPI A vs B + porovnávací graf</li>
-              <li><b>Žebříček</b> – zadaný seznam přezdívek (WR / bitvy / DMG / Avg)</li>
-              <li><b>Klanové statistiky</b> – hlavička + vzorek členů s WR</li>
-              <li><b>Poslední bitvy</b> – rozdíl od uloženého snapshotu (lokálně)</li>
-              <li><b>Tmavý režim</b> + <b>animace načítání</b></li>
+              <li>Hledání hráče • KPI (bitvy, výhry, WR, DMG…)</li>
+              <li>Garáž • karty tanků + <i>Detail tanku</i> s mini grafy</li>
+              <li>Grafy • Výhry vs Prohry, Top 10 DMG…</li>
+              <li>Porovnání hráčů (A vs B)</li>
+              <li>Žebříček hráčů (seznam přezdívek + metrika)</li>
+              <li>Klanové statistiky (hlavička + WR vzorek členů)</li>
+              <li>Poslední bitvy • rozdíl od uloženého snapshotu</li>
+              <li>Tmavý režim, animace načítání</li>
             </ul>
           </div>
           <div>
             <h4 class="font-semibold mb-2">Jak používat</h4>
             <ol class="list-decimal ml-6 space-y-1 text-slate-300">
-              <li>Zadej přezdívku a klikni <b>Hledat hráče</b> (nebo URL <code>?player=Nick</code>).</li>
-              <li>V <b>Garáži</b> otevři <i>Detail tanku</i> pro podrobnosti.</li>
+              <li>Zadej přezdívku → <b>Hledat hráče</b> (nebo do URL <code>?player=Nick</code>).</li>
+              <li>V <b>Garáži</b> otevři <i>Detail tanku</i>.</li>
               <li>Pro <b>Poslední bitvy</b>: nejdřív <b>Uložit snapshot</b>, po hraní <b>Vyhodnotit</b>.</li>
-              <li><b>Porovnání</b>: vyplň dva nicky → <b>Porovnat</b>.</li>
-              <li><b>Žebříček</b>: vlož nicky oddělené čárkou a zvol metriku.</li>
+              <li>Porovnání: vyplň A a B → <b>Porovnat</b>.</li>
+              <li>Žebříček: vlož nicky oddělené čárkou a zvol metriku.</li>
             </ol>
           </div>
         </div>
 
-        <div class="grid md:grid-cols-2 gap-4 mt-4">
-          <div>
-            <h4 class="font-semibold mb-2">Soukromí & data</h4>
-            <ul class="list-disc ml-6 space-y-1 text-slate-300">
-              <li>Data z veřejného <b>WG API</b> (EU/NA/ASIA/RU).</li>
-              <li>Žádný backend. <b>Snapshot</b> je jen v <b>localStorage</b> prohlížeče.</li>
-              <li>Když API vrátí chybu/timeout, zkus to znovu později.</li>
-            </ul>
-          </div>
-          <div>
-            <h4 class="font-semibold mb-2">Limity & poznámky</h4>
-            <ul class="list-disc ml-6 space-y-1 text-slate-300">
-              <li>WG API nedává kompletní historii „posledních bitev“ — tahle sekce je počítaná jako rozdíl „snapshot → teď“.</li>
-              <li>Některá data u účtů/vozidel nemusí být dostupná nebo jsou opožděná.</li>
-              <li>Projekt není oficiálně spojen s Wargamingem.</li>
-            </ul>
-          </div>
-        </div>
-
-        <h4 class="font-semibold mt-4 mb-2">Changelog (stručně)</h4>
+        <h4 class="font-semibold mt-4 mb-2">Poznámky</h4>
         <ul class="list-disc ml-6 space-y-1 text-slate-300">
-          <li><b>v5</b> – Poslední bitvy / aktivita od snapshotu</li>
-          <li><b>v4</b> – Porovnání, Žebříček, grafy garáže, Klany, barvy a emotikony tříd</li>
-          <li><b>v3</b> – Stabilizace (modály na &lt;div&gt;, fix JS), tmavé Chart.js</li>
-          <li><b>v2</b> – Tiers & Top bitvy, lokální trendy, spinner</li>
-          <li><b>v1</b> – Hledání hráče, KPI, garáž, základní grafy</li>
+          <li>Data z veřejného WG API (EU/NA/ASIA/RU). Historie „posledních bitev“ není v API, sekce je spočtena jako rozdíl.</li>
+          <li>Projekt není oficiálně spojen s Wargamingem.</li>
         </ul>
-
-        <p class="text-slate-400 text-xs mt-4">
-          Máš nápad nebo bug? Napiš mi do chatu a doplním.
-        </p>
       </div>
     </div>
   </div>
@@ -143,9 +115,12 @@
       <div id="cmpResult" class="hidden">
         <div class="grid md:grid-cols-2 gap-4">
           <div class="card p-4"><h4 id="cmpNameA" class="font-semibold mb-2">A</h4><div id="cmpKpiA" class="text-sm space-y-1"></div></div>
-        <div class="card p-4"><h4 id="cmpNameB" class="font-semibold mb-2">B</h4><div id="cmpKpiB" class="text-sm space-y-1"></div></div>
+          <div class="card p-4"><h4 id="cmpNameB" class="font-semibold mb-2">B</h4><div id="cmpKpiB" class="text-sm space-y-1"></div></div>
         </div>
-        <div class="card p-4 mt-3"><h4 class="font-semibold mb-2">Porovnání KPI</h4><canvas id="cmpChart" height="200"></canvas></div>
+        <div class="card p-4 mt-3">
+          <h4 class="font-semibold mb-2">Porovnání KPI</h4>
+          <div class="chart-box"><canvas id="cmpChart"></canvas></div>
+        </div>
       </div>
     </section>
 
@@ -163,7 +138,10 @@
             <div class="text-right"><div class="text-xs text-slate-400">Členů</div><div id="clanMembers" class="text-lg font-semibold">—</div></div>
           </div>
         </div>
-        <div class="card p-4"><h4 class="font-semibold mb-2">Vzorek členů (winrate)</h4><canvas id="clanChart" height="200"></canvas></div>
+        <div class="card p-4">
+          <h4 class="font-semibold mb-2">Vzorek členů (winrate)</h4>
+          <div class="chart-box"><canvas id="clanChart"></canvas></div>
+        </div>
       </div>
     </section>
 
@@ -182,7 +160,10 @@
       </div>
       <div class="grid md:grid-cols-2 gap-4">
         <div class="overflow-x-auto"><table id="lbTable" class="w-full text-sm"></table></div>
-        <div class="card p-4"><h4 class="font-semibold mb-2">Graf žebříčku</h4><canvas id="lbChart" height="220"></canvas></div>
+        <div class="card p-4">
+          <h4 class="font-semibold mb-2">Graf žebříčku</h4>
+          <div class="chart-box"><canvas id="lbChart"></canvas></div>
+        </div>
       </div>
     </section>
 
@@ -207,19 +188,19 @@
       </div>
 
       <div class="grid md:grid-cols-3 gap-4">
-        <div class="card p-4"><h3 class="font-semibold mb-2">Výhry vs Prohry</h3><canvas id="barWinLoss" height="200"></canvas></div>
-        <div class="card p-4"><h3 class="font-semibold mb-2">Podíl výher/proher</h3><canvas id="pieWinLoss" height="200"></canvas></div>
-        <div class="card p-4"><h3 class="font-semibold mb-2">Top 10 tanků podle DMG</h3><canvas id="barTopDmg" height="200"></canvas></div>
+        <div class="card p-4"><h3 class="font-semibold mb-2">Výhry vs Prohry</h3><div class="chart-box"><canvas id="barWinLoss"></canvas></div></div>
+        <div class="card p-4"><h3 class="font-semibold mb-2">Podíl výher/proher</h3><div class="chart-box"><canvas id="pieWinLoss"></canvas></div></div>
+        <div class="card p-4"><h3 class="font-semibold mb-2">Top 10 tanků podle DMG</h3><div class="chart-box"><canvas id="barTopDmg"></canvas></div></div>
       </div>
 
       <!-- POSLEDNÍ BITVY / AKTIVITA -->
       <section class="card p-4">
-        <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center justify-between mb-2 sticky top-[64px] z-30 bg-slate-900/80 backdrop-blur rounded-lg px-2 py-2">
           <h3 class="font-semibold">Poslední bitvy / aktivita (od uloženého snapshotu)</h3>
           <div class="flex items-center gap-2 text-sm">
-            <button id="snapCreateBtn" class="btn btn-emerald" title="Uloží aktuální stav jako výchozí">💾 Uložit snapshot</button>
-            <button id="snapComputeBtn" class="btn btn-primary" title="Spočítá změny od snapshotu">📈 Vyhodnotit</button>
-            <button id="snapClearBtn" class="btn" title="Smazat uložený snapshot">🗑️ Smazat</button>
+            <button id="snapCreateBtn" class="btn btn-emerald" title="Uloží aktuální stav jako výchozí">💾</button>
+            <button id="snapComputeBtn" class="btn btn-primary" title="Spočítá změny od snapshotu">📈</button>
+            <button id="snapClearBtn" class="btn" title="Smazat uložený snapshot">🗑️</button>
           </div>
         </div>
         <div class="text-slate-400 text-sm mb-2">
@@ -228,7 +209,10 @@
         <div id="snapInfo" class="text-slate-300 text-sm mb-3">—</div>
         <div class="grid md:grid-cols-2 gap-4">
           <div class="overflow-x-auto"><table id="recentTable" class="w-full text-sm"></table></div>
-          <div class="card p-4"><h4 class="font-semibold mb-2">Souhrn podle tanků</h4><canvas id="recentChart" height="220"></canvas></div>
+          <div class="card p-4">
+            <h4 class="font-semibold mb-2">Souhrn podle tanků</h4>
+            <div class="chart-box"><canvas id="recentChart"></canvas></div>
+          </div>
         </div>
       </section>
 
@@ -272,10 +256,8 @@
               <span class="pill"><span class="mini" style="background:#10b981"></span>Výhry</span>
               <span class="pill"><span class="mini" style="background:#ef4444"></span>Prohry</span>
             </div>
-            <canvas id="tankPie" height="180"></canvas>
-            <div class="mt-4">
-              <canvas id="tankBar" height="140"></canvas>
-            </div>
+            <div class="chart-box"><canvas id="tankPie"></canvas></div>
+            <div class="mt-4 chart-box"><canvas id="tankBar"></canvas></div>
           </div>
         </div>
 
@@ -297,7 +279,7 @@
   function ts(ts){ return ts? new Date(ts*1000).toLocaleString('cs-CZ'):'—'; }
   const loader = { on(){ $('#loader').classList.add('show'); }, off(){ $('#loader').classList.remove('show'); } };
 
-  // Modály helpers
+  // Modály
   function openModal(id){ document.getElementById(id)?.classList.add('open'); document.body.style.overflow='hidden'; }
   function closeModal(id){ document.getElementById(id)?.classList.remove('open'); document.body.style.overflow=''; }
 
@@ -371,14 +353,14 @@
   // ====== EVENTS ======
   document.getElementById('toggleTheme').addEventListener('click', ()=> document.documentElement.classList.toggle('dark'));
   document.getElementById('openInfo').addEventListener('click', ()=> openModal('infoModal'));
-
-  document.getElementById('playerInput').addEventListener('keydown', (e)=>{
-    if(e.key==='Enter'){ e.preventDefault(); document.getElementById('searchBtn').click(); }
-  });
+  document.getElementById('playerInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('searchBtn').click(); }});
+  ['cmpA','cmpB'].forEach(id=>document.getElementById(id).addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('cmpBtn').click(); }}));
+  document.getElementById('clanQuery').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('clanBtn').click(); }});
+  document.getElementById('lbNames').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('lbBtn').click(); }});
 
   document.getElementById('searchBtn').addEventListener('click', async ()=>{
     const nick = $('#playerInput').value.trim();
-    theRegion = $('#region').value;
+    const theRegion = $('#region').value;
     if(!nick) return;
 
     $('#errorBox').classList.add('hidden');
@@ -429,7 +411,7 @@
             {label:accB.nickname, data:[kB.battles,kB.wins,kB.losses,kB.dmg,kB.avg,(kB.wr*100)], backgroundColor:'#3b82f6'}
           ]
         },
-        options:{ responsive:true, plugins:{legend:{position:'top'}} }
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'top'}} }
       });
     }catch(e){ alert(e.message||e); }
     finally{ loader.off(); }
@@ -471,7 +453,7 @@
       CHARTS.clan = new Chart(document.getElementById('clanChart'),{
         type:'bar',
         data:{ labels: rows.map(r=>r.name), datasets:[{ label:'Winrate %', data: rows.map(r=>r.wr), backgroundColor:'#06b6d4' }] },
-        options:{ indexAxis:'y', plugins:{legend:{display:false}} }
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
       });
     }catch(e){ alert(e.message||e); }
     finally{ loader.off(); }
@@ -511,7 +493,7 @@
       CHARTS.lb = new Chart(document.getElementById('lbChart'),{
         type:'bar',
         data:{ labels: rows.map(r=>r.name), datasets:[{ label: headLbl, data: rows.map(r=>r.value), backgroundColor:'#8b5cf6' }] },
-        options:{ indexAxis:'y', plugins:{legend:{display:false}} }
+        options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
       });
     }catch(e){ alert(e.message||e); }
     finally{ loader.off(); }
@@ -549,13 +531,28 @@
 
     upsert('barWinLoss', $('#barWinLoss'), {
       type:'bar',
-      data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Počet', data:[wins,losses], backgroundColor:[COLORS.win,COLORS.loss] }] }
+      data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Počet', data:[wins,losses], backgroundColor:[COLORS.win,COLORS.loss] }] },
+      options:{ responsive:true, maintainAspectRatio:false }
     });
     upsert('pieWinLoss', $('#pieWinLoss'), {
       type:'pie',
-      data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Podíl', data:[wins,losses], backgroundColor:[COLORS.win,COLORS.loss] }] }
+      data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Podíl', data:[wins,losses], backgroundColor:[COLORS.win,COLORS.loss] }] },
+      options:{ responsive:true, maintainAspectRatio:false }
     });
 
+    // Top 10 DMG podle tanku
+    const byDmg = tstats.map(t=>{
+      const a=t.all||{}; return { id:t.tank_id, dmg:a.damage_dealt||0 };
+    }).sort((A,B)=>B.dmg-A.dmg).slice(0,10);
+    const labelsTop = byDmg.map(x=> (vmap?.[x.id]?.name)||('Tank '+x.id));
+    const dataTop = byDmg.map(x=> x.dmg);
+    upsert('barTopDmg', $('#barTopDmg'), {
+      type:'bar',
+      data:{ labels:labelsTop, datasets:[{ label:'DMG', data:dataTop, backgroundColor:'#60a5fa' }] },
+      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+    });
+
+    // Garáž
     const garage = tstats.map(t=>{
       const v=vmap?.[t.tank_id]||{};
       const a=t.all||{};
@@ -567,7 +564,7 @@
       return {
         id:t.tank_id, name:v.name||('Tank '+t.tank_id),
         tier:v.tier||'?', img:v?.images?.big_icon||v?.images?.small_icon||'',
-        cls:v.type||'', nation:v.nation||'',
+        cls=v.type||'', nation=v.nation||'',
         battles:b, wins:w, losses:Math.max(0,b-w-(a.draws||0)), dmg:d, avg, frags:fr
       };
     }).sort((A,B)=>B.battles-A.battles);
@@ -624,7 +621,7 @@
     CHARTS.tankPie = new Chart(document.getElementById('tankPie'), {
       type:'doughnut',
       data:{ labels:['Výhry','Prohry'], datasets:[{ data:[t.wins||0, t.losses||0], backgroundColor:[COLORS.win, COLORS.loss], borderWidth:1 }] },
-      options:{ plugins:{ legend:{ display:false } }, cutout:'60%' }
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, cutout:'60%' }
     });
 
     CHARTS.tankBar = new Chart(document.getElementById('tankBar'), {
@@ -633,7 +630,7 @@
         labels:['DMG celkem','Prům. DMG','Zničené'],
         datasets:[{ label:'Hodnota', data:[t.dmg||0, t.avg||0, t.frags||0], backgroundColor:'#60a5fa' }]
       },
-      options:{ indexAxis:'y', plugins:{ legend:{ display:false } } }
+      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
     });
 
     openModal('tankModal');
@@ -709,7 +706,7 @@
       clearSnapshot(account_id);
       infoBox.textContent = 'Snapshot smazán.';
       $('#recentTable').innerHTML='';
-      upsert('recent', $('#recentChart'), { type:'bar', data:{ labels:[], datasets:[] } });
+      upsert('recent', $('#recentChart'), { type:'bar', data:{ labels:[], datasets:[] }, options:{responsive:true, maintainAspectRatio:false} });
     };
     document.getElementById('snapComputeBtn').onclick = ()=> computeRecent(account_id, info, tstats, vmap);
   }
@@ -750,7 +747,7 @@
     upsert('recent', $('#recentChart'), {
       type:'bar',
       data:{ labels, datasets:[{ label:'Bitvy', data:battles, backgroundColor: battles.map(()=> COLORS.battles) }] },
-      options:{ indexAxis:'y', plugins:{ legend:{ display:false } } }
+      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } }
     });
 
     $('#snapInfo').innerHTML =
