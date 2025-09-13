@@ -121,6 +121,7 @@
   </div>
 
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-8">
+
     <!-- Hledání hráče -->
     <section class="card p-4">
       <div class="grid gap-3 md:grid-cols-[1fr_auto] items-center">
@@ -129,6 +130,60 @@
       </div>
       <p id="errorBox" class="mt-2 text-red-400 hidden"></p>
       <p class="mt-2 text-slate-400 text-sm">Tip: Enter spustí hledání. Lze také <code>?player=nickname</code>.</p>
+    </section>
+
+    <!-- Porovnání hráčů -->
+    <section class="card p-4 space-y-3">
+      <h3 class="font-semibold">Porovnání hráčů</h3>
+      <div class="grid gap-3 md:grid-cols-[1fr_1fr_auto] items-center">
+        <input id="cmpA" class="bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2" placeholder="Hráč A">
+        <input id="cmpB" class="bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2" placeholder="Hráč B">
+        <button id="cmpBtn" class="btn btn-primary">Porovnat</button>
+      </div>
+      <div id="cmpResult" class="hidden">
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="card p-4"><h4 id="cmpNameA" class="font-semibold mb-2">A</h4><div id="cmpKpiA" class="text-sm space-y-1"></div></div>
+        <div class="card p-4"><h4 id="cmpNameB" class="font-semibold mb-2">B</h4><div id="cmpKpiB" class="text-sm space-y-1"></div></div>
+        </div>
+        <div class="card p-4 mt-3"><h4 class="font-semibold mb-2">Porovnání KPI</h4><canvas id="cmpChart" height="200"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Klanové statistiky -->
+    <section class="card p-4 space-y-3">
+      <h3 class="font-semibold">Klanové statistiky</h3>
+      <div class="grid gap-3 md:grid-cols-[1fr_auto] items-center">
+        <input id="clanQuery" class="bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2" placeholder="Hledat klan (tag nebo název)…">
+        <button id="clanBtn" class="btn btn-emerald">Najít klan</button>
+      </div>
+      <div id="clanResult" class="hidden">
+        <div class="card p-4">
+          <div class="flex items-center justify-between">
+            <div><h4 id="clanName" class="font-semibold">—</h4><div id="clanMeta" class="text-xs text-slate-400">—</div></div>
+            <div class="text-right"><div class="text-xs text-slate-400">Členů</div><div id="clanMembers" class="text-lg font-semibold">—</div></div>
+          </div>
+        </div>
+        <div class="card p-4"><h4 class="font-semibold mb-2">Vzorek členů (winrate)</h4><canvas id="clanChart" height="200"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Žebříček hráčů -->
+    <section class="card p-4 space-y-3">
+      <h3 class="font-semibold">Žebříček hráčů</h3>
+      <div class="grid gap-3 md:grid-cols-[1fr_auto_auto] items-center">
+        <input id="lbNames" class="bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2" placeholder="Nicky oddělené čárkou, např.: LaysenCZECH, PlayerTwo, PlayerThree">
+        <select id="lbMetric" class="bg-slate-800/70 border border-white/10 rounded-xl px-3 py-2">
+          <option value="wr">Winrate</option>
+          <option value="battles">Bitvy</option>
+          <option value="dmg">DMG celkem</option>
+          <option value="avg">Prům. DMG</option>
+        </select>
+        <button id="lbBtn" class="btn btn-primary">Načíst žebříček</button>
+      </div>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="overflow-x-auto"><table id="lbTable" class="w-full text-sm"></table></div>
+        <div class="card p-4"><h4 class="font-semibold mb-2">Graf žebříčku</h4><canvas id="lbChart" height="220"></canvas></div>
+      </div>
     </section>
 
     <!-- Výstup hráče -->
@@ -242,7 +297,7 @@
   function ts(ts){ return ts? new Date(ts*1000).toLocaleString('cs-CZ'):'—'; }
   const loader = { on(){ $('#loader').classList.add('show'); }, off(){ $('#loader').classList.remove('show'); } };
 
-  // Modal helpers
+  // Modály helpers
   function openModal(id){ document.getElementById(id)?.classList.add('open'); document.body.style.overflow='hidden'; }
   function closeModal(id){ document.getElementById(id)?.classList.remove('open'); document.body.style.overflow=''; }
 
@@ -287,55 +342,18 @@
     return out;
   }
 
-  // ====== EVENTS ======
-  document.getElementById('toggleTheme').addEventListener('click', ()=> document.documentElement.classList.toggle('dark'));
-  document.getElementById('openInfo').addEventListener('click', ()=> openModal('infoModal'));
-
-  document.getElementById('playerInput').addEventListener('keydown', (e)=>{
-    if(e.key==='Enter'){ e.preventDefault(); document.getElementById('searchBtn').click(); }
-  });
-
-  document.getElementById('searchBtn').addEventListener('click', async ()=>{
-    const nick = $('#playerInput').value.trim();
-    const region = $('#region').value;
-    if(!nick) return;
-
-    $('#errorBox').classList.add('hidden');
-    loader.on();
-    try{
-      const acc = await searchAccount(nick, region);
-      if(!acc) throw new Error('Hráč nenalezen');
-
-      const [info, tstats] = await Promise.all([
-        accountInfo(acc.account_id, region),
-        tanksStats(acc.account_id, region)
-      ]);
-      const ids = [...new Set(tstats.map(t=>t.tank_id))];
-      const vmap = await vehiclesByIds(ids, region);
-
-      renderPlayer(acc, info, tstats, vmap, region);
-    }catch(e){
-      $('#errorBox').textContent = e.message||String(e);
-      $('#errorBox').classList.remove('hidden');
-    }finally{
-      loader.off();
-    }
-  });
-
-  document.addEventListener('DOMContentLoaded', ()=>{
-    const p=new URL(location.href).searchParams.get('player');
-    if(p){ $('#playerInput').value=p; document.getElementById('searchBtn').click(); }
-    else { $('#playerInput').focus(); }
-    lucide.createIcons();
-  });
-
-  // ====== RENDER ======
-  let CHARTS={};
-  function upsert(ref, ctx, cfg){
-    if(CHARTS[ref]){ CHARTS[ref].data=cfg.data; CHARTS[ref].options=cfg.options||{}; CHARTS[ref].update(); }
-    else { CHARTS[ref]=new Chart(ctx, cfg); }
+  // ====== COMMON ======
+  function kpiFromInfo(info){
+    const s=info?.statistics?.all||{};
+    const battles=s.battles||0;
+    const wins=s.wins||0;
+    const draws=s.draws||0;
+    const losses=Math.max(0,battles-wins-draws);
+    const dmg=s.damage_dealt||0;
+    const avg=battles?Math.round(dmg/battles):0;
+    const wr=battles?wins/battles:0;
+    return { battles, wins, losses, dmg, avg, wr };
   }
-
   function classBadge(cls){
     switch((cls||'').toLowerCase()){
       case 'heavytank': return 'badge-ht';
@@ -348,6 +366,162 @@
       case 'self_propelled_gun': return 'badge-spg';
       default: return '';
     }
+  }
+
+  // ====== EVENTS ======
+  document.getElementById('toggleTheme').addEventListener('click', ()=> document.documentElement.classList.toggle('dark'));
+  document.getElementById('openInfo').addEventListener('click', ()=> openModal('infoModal'));
+
+  document.getElementById('playerInput').addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){ e.preventDefault(); document.getElementById('searchBtn').click(); }
+  });
+
+  document.getElementById('searchBtn').addEventListener('click', async ()=>{
+    const nick = $('#playerInput').value.trim();
+    theRegion = $('#region').value;
+    if(!nick) return;
+
+    $('#errorBox').classList.add('hidden');
+    loader.on();
+    try{
+      const acc = await searchAccount(nick, theRegion);
+      if(!acc) throw new Error('Hráč nenalezen');
+
+      const [info, tstats] = await Promise.all([
+        accountInfo(acc.account_id, theRegion),
+        tanksStats(acc.account_id, theRegion)
+      ]);
+      const ids = [...new Set(tstats.map(t=>t.tank_id))];
+      const vmap = await vehiclesByIds(ids, theRegion);
+
+      renderPlayer(acc, info, tstats, vmap, theRegion);
+    }catch(e){
+      $('#errorBox').textContent = e.message||String(e);
+      $('#errorBox').classList.remove('hidden');
+    }finally{
+      loader.off();
+    }
+  });
+
+  document.getElementById('cmpBtn').addEventListener('click', async ()=>{
+    const a=$('#cmpA').value.trim(); const b=$('#cmpB').value.trim(); const region=$('#region').value;
+    if(!a||!b) return;
+    loader.on();
+    try{
+      const [accA, accB] = await Promise.all([searchAccount(a,region), searchAccount(b,region)]);
+      if(!accA||!accB) throw new Error('Hráč A nebo B nenalezen.');
+      const [infoA, infoB] = await Promise.all([accountInfo(accA.account_id,region), accountInfo(accB.account_id,region)]);
+      const kA = kpiFromInfo(infoA); const kB = kpiFromInfo(infoB);
+
+      $('#cmpResult').classList.remove('hidden');
+      $('#cmpNameA').textContent = accA.nickname;
+      $('#cmpNameB').textContent = accB.nickname;
+      $('#cmpKpiA').innerHTML = `Bitvy: <b>${fmt(kA.battles)}</b><br>Výhry: <b>${fmt(kA.wins)}</b> (${pct(kA.wr)})<br>DMG: <b>${fmt(kA.dmg)}</b> • Avg: <b>${fmt(kA.avg)}</b>`;
+      $('#cmpKpiB').innerHTML = `Bitvy: <b>${fmt(kB.battles)}</b><br>Výhry: <b>${fmt(kB.wins)}</b> (${pct(kB.wr)})<br>DMG: <b>${fmt(kB.dmg)}</b> • Avg: <b>${fmt(kB.avg)}</b>`;
+
+      if(CHARTS.cmp) CHARTS.cmp.destroy();
+      CHARTS.cmp = new Chart(document.getElementById('cmpChart'),{
+        type:'bar',
+        data:{
+          labels:['Bitvy','Výhry','Prohry','DMG','Avg DMG','Winrate %'],
+          datasets:[
+            {label:accA.nickname, data:[kA.battles,kA.wins,kA.losses,kA.dmg,kA.avg,(kA.wr*100)], backgroundColor:'#22c55e'},
+            {label:accB.nickname, data:[kB.battles,kB.wins,kB.losses,kB.dmg,kB.avg,(kB.wr*100)], backgroundColor:'#3b82f6'}
+          ]
+        },
+        options:{ responsive:true, plugins:{legend:{position:'top'}} }
+      });
+    }catch(e){ alert(e.message||e); }
+    finally{ loader.off(); }
+  });
+
+  async function clanSearch(query, region){
+    const u = `${REGIONS[region]}/wot/clans/list/?application_id=${WG_APP_ID}&search=${encodeURIComponent(query)}&limit=1`;
+    const d = await getJSON(u);
+    return d?.[0]||null;
+  }
+  async function clanInfo(clan_id, region){
+    const u = `${REGIONS[region]}/wot/clans/info/?application_id=${WG_APP_ID}&clan_id=${clan_id}&extra=members`;
+    const d = await getJSON(u);
+    return d?.[clan_id];
+  }
+  document.getElementById('clanBtn').addEventListener('click', async ()=>{
+    const q=$('#clanQuery').value.trim(); const region=$('#region').value;
+    if(!q) return;
+    loader.on();
+    try{
+      const clan = await clanSearch(q, region);
+      if(!clan) throw new Error('Klan nenalezen.');
+      const ci = await clanInfo(clan.clan_id, region);
+      $('#clanResult').classList.remove('hidden');
+      $('#clanName').textContent = `[${ci.tag}] ${ci.name}`;
+      $('#clanMeta').textContent = `Clan ID: ${ci.clan_id} • Region: ${region.toUpperCase()}`;
+      $('#clanMembers').textContent = ci.members_count || (ci.members?.length||'—');
+
+      const ids = (ci.members||[]).slice(0,25).map(m=>m.account_id);
+      if(!ids.length) throw new Error('Klan nemá členy (nebo API neposkytlo).');
+      const u = `${REGIONS[region]}/wot/account/info/?application_id=${WG_APP_ID}&account_id=${ids.join(',')}`;
+      const data = await getJSON(u);
+      const rows = ids.map(id=>{
+        const inf=data[id]; const k=kpiFromInfo(inf);
+        return { name: inf?.nickname||id, wr: (k.wr*100) };
+      }).sort((A,B)=>B.wr-A.wr);
+
+      if(CHARTS.clan) CHARTS.clan.destroy();
+      CHARTS.clan = new Chart(document.getElementById('clanChart'),{
+        type:'bar',
+        data:{ labels: rows.map(r=>r.name), datasets:[{ label:'Winrate %', data: rows.map(r=>r.wr), backgroundColor:'#06b6d4' }] },
+        options:{ indexAxis:'y', plugins:{legend:{display:false}} }
+      });
+    }catch(e){ alert(e.message||e); }
+    finally{ loader.off(); }
+  });
+
+  document.getElementById('lbBtn').addEventListener('click', async ()=>{
+    const names = $('#lbNames').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const metric = $('#lbMetric').value; const region=$('#region').value;
+    if(!names.length) return;
+
+    loader.on();
+    try{
+      const accs = await Promise.all(names.map(n=>searchAccount(n,region)));
+      const valid = accs.filter(Boolean);
+      if(!valid.length) throw new Error('Žádný hráč nenalezen.');
+      const ids = valid.map(a=>a.account_id);
+      const u = `${REGIONS[region]}/wot/account/info/?application_id=${WG_APP_ID}&account_id=${ids.join(',')}`;
+      const data = await getJSON(u);
+
+      const rows = valid.map(a=>{
+        const k = kpiFromInfo(data[a.account_id]);
+        const val = metric==='wr'? (k.wr*100) : metric==='battles'? k.battles : metric==='dmg'? k.dmg : k.avg;
+        return { name:a.nickname, value: val, k };
+      }).sort((A,B)=>B.value-A.value);
+
+      const tbl = $('#lbTable');
+      const headLbl = metric==='wr'?'Winrate %': metric==='battles'?'Bitvy': metric==='dmg'?'DMG celkem':'Prům. DMG';
+      tbl.innerHTML = `<thead class='text-left text-slate-400'><tr><th class='py-2 pr-4'>#</th><th class='py-2 pr-4'>Hráč</th><th class='py-2 pr-4'>${headLbl}</th><th class='py-2'>Bitvy</th></tr></thead><tbody></tbody>`;
+      const tb = tbl.querySelector('tbody');
+      rows.forEach((r,i)=>{
+        const tr=document.createElement('tr'); tr.className='border-t border-white/10';
+        tr.innerHTML = `<td class='py-2 pr-4'>${i+1}</td><td class='py-2 pr-4'>${r.name}</td><td class='py-2 pr-4'>${metric==='wr'? r.value.toFixed(2)+'%' : fmt(r.value)}</td><td class='py-2'>${fmt(r.k.battles)}</td>`;
+        tb.appendChild(tr);
+      });
+
+      if(CHARTS.lb) CHARTS.lb.destroy();
+      CHARTS.lb = new Chart(document.getElementById('lbChart'),{
+        type:'bar',
+        data:{ labels: rows.map(r=>r.name), datasets:[{ label: headLbl, data: rows.map(r=>r.value), backgroundColor:'#8b5cf6' }] },
+        options:{ indexAxis:'y', plugins:{legend:{display:false}} }
+      });
+    }catch(e){ alert(e.message||e); }
+    finally{ loader.off(); }
+  });
+
+  // ====== RENDER PLAYER ======
+  let CHARTS={};
+  function upsert(ref, ctx, cfg){
+    if(CHARTS[ref]){ CHARTS[ref].data=cfg.data; CHARTS[ref].options=cfg.options||{}; CHARTS[ref].update(); }
+    else { CHARTS[ref]=new Chart(ctx, cfg); }
   }
 
   function renderPlayer(acc, info, tstats, vmap, region){
@@ -382,7 +556,6 @@
       data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Podíl', data:[wins,losses], backgroundColor:[COLORS.win,COLORS.loss] }] }
     });
 
-    // Garáž
     const garage = tstats.map(t=>{
       const v=vmap?.[t.tank_id]||{};
       const a=t.all||{};
@@ -400,7 +573,6 @@
     }).sort((A,B)=>B.battles-A.battles);
     renderGarage(garage);
 
-    // Snapshot UI
     setupSnapshotUI(acc.account_id, info, tstats, vmap);
   }
 
@@ -585,6 +757,14 @@
       `Souhrn: <b>${fmt(res.tot.battles)}</b> bitev, výhry <b>${fmt(res.tot.wins)}</b>, DMG <b>${fmt(res.tot.dmg)}</b>, fragy <b>${fmt(res.tot.frags)}</b>.<br>
        Interval: ${res.since} → ${res.until}`;
   }
+
+  // Autofocus / deep link
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const p=new URL(location.href).searchParams.get('player');
+    if(p){ $('#playerInput').value=p; document.getElementById('searchBtn').click(); }
+    else { $('#playerInput').focus(); }
+    lucide.createIcons();
+  });
 </script>
 </body>
 </html>
