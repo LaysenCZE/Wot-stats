@@ -257,6 +257,17 @@
     // ICONS
     lucide.createIcons();
 
+    // Chart.js – tmavé výchozí barvy, ať je vše čitelné
+    function applyChartDarkTheme(){
+      if(!window.Chart) return;
+      Chart.defaults.color = '#e2e8f0';            // slate-200
+      Chart.defaults.borderColor = 'rgba(148,163,184,.25)'; // slate-400/25
+      if(Chart.defaults.plugins && Chart.defaults.plugins.legend && Chart.defaults.plugins.legend.labels){
+        Chart.defaults.plugins.legend.labels.color = '#e2e8f0';
+      }
+    }
+    applyChartDarkTheme();
+
     // API generic
     async function getJSON(url){
       const res = await fetch(url);
@@ -350,23 +361,23 @@
       $('#kpiAvg').textContent = fmt(avg);
 
       // Charts base
-      upsertChart('barWinLoss', $('#barWinLoss'), { type:'bar', data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Počet', data:[wins, losses], backgroundColor:[COLORS.win, COLORS.loss] }] }, options:{ plugins:{ legend:{ labels:{ usePointStyle:true } } } }});
-      upsertChart('pieWinLoss', $('#pieWinLoss'), { type:'pie', data:{ labels:['Výhry','Prohry'], datasets:[{ data:[wins,losses], backgroundColor:[COLORS.win, COLORS.loss] }] }, options:{ plugins:{ legend:{ labels:{ usePointStyle:true } } } }});
+      upsertChart('barWinLoss', $('#barWinLoss'), { type:'bar', data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Počet', data:[wins, losses], backgroundColor:[COLORS.win, COLORS.loss] }] }, options:{ scales:{ x:{ ticks:{ color:'#e2e8f0' }, grid:{ color:'rgba(148,163,184,.2)'} }, y:{ ticks:{ color:'#e2e8f0' }, grid:{ color:'rgba(148,163,184,.2)'} } }, plugins:{ legend:{ labels:{ usePointStyle:true, color:'#e2e8f0' } } } }});
+      upsertChart('pieWinLoss', $('#pieWinLoss'), { type:'pie', data:{ labels:['Výhry','Prohry'], datasets:[{ label:'Podíl', data:[wins,losses], backgroundColor:[COLORS.win, COLORS.loss] }] }, options:{ plugins:{ legend:{ labels:{ usePointStyle:true, color:'#e2e8f0' } } } }});
 
       // Garage enrich
       const garage = enrichGarage(tstats, vmap);
       const topDmg = [...garage].sort((a,b)=>b.dmg-a.dmg).slice(0,10);
-      upsertChart('barTopDmg', $('#barTopDmg'), { type:'bar', data:{ labels: topDmg.map(g=> (CLASS_META[g.class]?.emoji||'')+' '+g.name), datasets:[{ label:'Celkový DMG', data: topDmg.map(g=>g.dmg), backgroundColor: topDmg.map(()=>COLORS.dmg) }] }, options:{ indexAxis:'y', scales:{ x:{ ticks:{ callback:(v)=> v.toLocaleString?.()||v } } }, plugins:{ legend:{ labels:{ usePointStyle:true } } } }});
+      upsertChart('barTopDmg', $('#barTopDmg'), { type:'bar', data:{ labels: topDmg.map(g=> (CLASS_META[g.class]?.emoji||'')+' '+g.name), datasets:[{ label:'Celkový DMG', data: topDmg.map(g=>g.dmg), backgroundColor: topDmg.map(()=>COLORS.dmg) }] }, options:{ indexAxis:'y', scales:{ x:{ ticks:{ color:'#e2e8f0', callback:(v)=> v.toLocaleString?.()||v }, grid:{ color:'rgba(148,163,184,.2)'} }, y:{ ticks:{ color:'#e2e8f0' }, grid:{ color:'rgba(148,163,184,.1)'} } }, plugins:{ legend:{ labels:{ usePointStyle:true, color:'#e2e8f0' } } } }});
 
       // NEW: pie tiers distribution
       const byTier = {};
       for(const g of garage){ byTier[g.tier] = (byTier[g.tier]||0) + 1; }
       const tiers = Object.keys(byTier).sort((a,b)=> Number(a)-Number(b));
-      upsertChart('pieTiers', $('#pieTiers'), { type:'doughnut', data:{ labels: tiers.map(t=> 'Tier '+t), datasets:[{ data: tiers.map(t=> byTier[t]) }] } });
+      upsertChart('pieTiers', $('#pieTiers'), { type:'doughnut', data:{ labels: tiers.map(t=> 'Tier '+t), datasets:[{ label:'Počet tanků', data: tiers.map(t=> byTier[t]) }] }, options:{ plugins:{ legend:{ labels:{ color:'#e2e8f0' } } } } });
 
       // NEW: top 10 by battles
       const topBattles = [...garage].sort((a,b)=>b.battles-a.battles).slice(0,10);
-      upsertChart('barTopBattles', $('#barTopBattles'), { type:'bar', data:{ labels: topBattles.map(g=> (CLASS_META[g.class]?.emoji||'')+' '+g.name), datasets:[{ label:'Bitvy', data: topBattles.map(g=>g.battles), backgroundColor: topBattles.map(()=>COLORS.battles) }] }, options:{ indexAxis:'y' } });
+      upsertChart('barTopBattles', $('#barTopBattles'), { type:'bar', data:{ labels: topBattles.map(g=> (CLASS_META[g.class]?.emoji||'')+' '+g.name), datasets:[{ label:'Bitvy', data: topBattles.map(g=>g.battles), backgroundColor: topBattles.map(()=>COLORS.battles) }] }, options:{ indexAxis:'y', scales:{ x:{ ticks:{ color:'#e2e8f0' }, grid:{ color:'rgba(148,163,184,.2)' } }, y:{ ticks:{ color:'#e2e8f0' }, grid:{ color:'rgba(148,163,184,.1)' } } } });
 
       // store & render garage
       window._GARAGE = garage; renderGarage();
@@ -434,7 +445,7 @@
     function renderTrends(account_id){
       const key = `wotsnap_${account_id}`;
       const arr = JSON.parse(localStorage.getItem(key)||'[]');
-      if(!arr.length){ upsertChart('lineTrends', $('#lineTrends'), { type:'line', data:{ labels:[], datasets:[] } }); return; }
+      if(!arr.length){ upsertChart('lineTrends', $('#lineTrends'), { type:'line', data:{ labels, datasets:[{ label:'Winrate %', data: arr.map(s=> (s.wr*100).toFixed(2)), yAxisID:'y1' }, { label:'Prům. DMG', data: arr.map(s=> s.avg), yAxisID:'y2' }] }, options:{ scales:{ y1:{ type:'linear', position:'left', ticks:{ color:'#e2e8f0' }, grid:{ color:'rgba(148,163,184,.2)' }, title:{ display:true, text:'WR %', color return; }
       const labels = arr.map(s=> new Date(s.ts).toLocaleString('cs-CZ'));
       upsertChart('lineTrends', $('#lineTrends'), { type:'line', data:{ labels, datasets:[{ label:'Winrate', data: arr.map(s=> (s.wr*100).toFixed(2)), yAxisID:'y1' }, { label:'Prům. DMG', data: arr.map(s=> s.avg), yAxisID:'y2' }] }, options:{ scales:{ y1:{ type:'linear', position:'left', title:{ display:true, text:'WR %' } }, y2:{ type:'linear', position:'right', title:{ display:true, text:'Avg DMG' }, grid:{ drawOnChartArea:false } } } } });
     }
